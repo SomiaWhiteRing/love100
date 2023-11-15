@@ -4,7 +4,7 @@ import Tool from "./components/Tool.vue";
 
 <template>
   <div>
-    推荐在PC端使用。鼠标左键点击格子或将图片拖入格子填表，右键点击编辑格子内图片。
+    推荐在PC端使用。鼠标左键点击空格子或将图片拖入格子填表，再次点击编辑格子内图片。
   </div>
   <div>标题和填表人可点击修改。</div>
   <Tool />

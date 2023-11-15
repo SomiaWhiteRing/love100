@@ -106,22 +106,27 @@ onMounted(async () => {
       // 格子部分
       const [i, j] = getGridIndex(e);
       if (i === -1 || j === -1) return;
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.onchange = () => {
-        const file = input.files![0];
-        const reader = new FileReader();
-        reader.onload = () => {
-          const img = new Image();
-          img.onload = () => {
-            drawImageOnGrid(img, i, j);
+      // 判断格子内是否有图片
+      if (images[i][j]) {
+        onCrop(i, j);
+      } else {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = () => {
+          const file = input.files![0];
+          const reader = new FileReader();
+          reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              drawImageOnGrid(img, i, j);
+            };
+            img.src = reader.result as string;
           };
-          img.src = reader.result as string;
+          reader.readAsDataURL(file);
         };
-        reader.readAsDataURL(file);
-      };
-      input.click();
+        input.click();
+      }
     }
   });
 
@@ -131,6 +136,18 @@ onMounted(async () => {
     const [x, y] = getGridIndex(e);
     if (x === -1 || y === -1) return;
     onCrop(x, y);
+  });
+
+  // 长按事件同右键点击事件
+  canvas.value!.addEventListener("mousedown", (e) => {
+    const [x, y] = getGridIndex(e);
+    if (x === -1 || y === -1) return;
+    const timer = setTimeout(() => {
+      onCrop(x, y);
+    }, 500);
+    canvas.value!.addEventListener("mouseup", () => {
+      clearTimeout(timer);
+    });
   });
 });
 
@@ -339,6 +356,8 @@ function loadLocalStorage() {
 // 存储数据副本
 function save() {
   localStorage.setItem("imagesSaved", localStorage.getItem("images")!);
+  localStorage.setItem("titleSaved", localStorage.getItem("title")!);
+  localStorage.setItem("nameSaved", localStorage.getItem("name")!);
   const saveButton = document.getElementById("save")!;
   saveButton.innerText = "存储✅";
   setTimeout(() => {
@@ -352,10 +371,10 @@ function restore() {
     alert("没有存储的数据");
     return;
   }
-  if (localStorage.getItem("imagesSaved")) {
-    localStorage.setItem("images", localStorage.getItem("imagesSaved")!);
-    loadLocalStorage();
-  }
+  localStorage.setItem("images", localStorage.getItem("imagesSaved")!);
+  localStorage.setItem("title", localStorage.getItem("titleSaved")!);
+  localStorage.setItem("name", localStorage.getItem("nameSaved")!);
+  loadLocalStorage();
   const restoreButton = document.getElementById("restore")!;
   restoreButton.innerText = "还原✅";
   setTimeout(() => {
@@ -366,8 +385,14 @@ function restore() {
 // 清空当前数据
 function clear() {
   localStorage.removeItem("images");
+  localStorage.removeItem("title");
+  localStorage.removeItem("name");
+  images = new Array(10).fill(0).map(() => new Array(10).fill(""));
+  title.value = "2023推TOP100";
+  name.value = "填表人：__________";
   drawRects();
   drawTitle();
+  drawCopyRight();
   const clearButton = document.getElementById("clear")!;
   clearButton.innerText = "清空✅";
   setTimeout(() => {
