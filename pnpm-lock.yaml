@@ -5,9 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
-  '@uivjs/vue-github-corners':
-    specifier: ^1.0.1
-    version: 1.0.1(vue@3.3.8)
   '@vercel/analytics':
     specifier: ^1.1.1
     version: 1.1.1
@@ -20,9 +17,6 @@ dependencies:
   vue-cropper:
     specifier: 1.1.1
     version: 1.1.1
-  vue-gh-corners:
-    specifier: ^3.0.1
-    version: 3.0.1(vue@3.3.8)
 
 devDependencies:
   '@vitejs/plugin-vue':
@@ -263,14 +257,6 @@ packages:
 
   /@jridgewell/sourcemap-codec@1.4.15:
     resolution: {integrity: sha512-eF2rxCRulEKXHTRiDrDy6erMYWqNw4LPdQ8UQA4huuxaQsVeRPFl2oM8oDGxMFhJUWZf9McpLtJasDDZb/Bpeg==}
-
-  /@uivjs/vue-github-corners@1.0.1(vue@3.3.8):
-    resolution: {integrity: sha512-O/cx0+8RFDE4cMGTKJZHeb0ZD4Bbnt5l934HGPrat4ntJdExnSFVd7ZQLpyMzoLRN34uXQcdFpJM8i6oujRx2A==}
-    peerDependencies:
-      vue: '>=3.0.0'
-    dependencies:
-      vue: 3.3.8(typescript@5.2.2)
-    dev: false
 
   /@vercel/analytics@1.1.1:
     resolution: {integrity: sha512-+NqgNmSabg3IFfxYhrWCfB/H+RCUOCR5ExRudNG2+pcRehq628DJB5e1u1xqwpLtn4pAYii4D98w7kofORAGQA==}
@@ -539,10 +525,6 @@ packages:
     resolution: {integrity: sha512-/OaKK0xYrs3DmxRYqL/yDc+FxFUVYhDlXMhRmv3z915w2HF1tnN1omB354j8VUGO/hbRzyD6Y3sA7v7GS/ceog==}
     engines: {node: '>=4'}
 
-  /tslib@1.14.1:
-    resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==}
-    dev: false
-
   /typescript@5.2.2:
     resolution: {integrity: sha512-mI4WrpHsbCIcwT9cF4FZvr80QUeKvsUsUvKDoR+X/7XHQH98xYD8YHZg7ANtz2GtZt/CBq2QJ0thkGJMHfqc1w==}
     engines: {node: '>=14.17'}
@@ -590,20 +572,6 @@ packages:
 
   /vue-cropper@1.1.1:
     resolution: {integrity: sha512-WsqKMpaBf9Osi1LQlE/5AKdD0nHWOy1asLXocaG8NomOWO07jiZi968+/PbMmnD0QbPJOumDQaGuGa13qys85A==}
-    dev: false
-
-  /vue-gh-corners@3.0.1(vue@3.3.8):
-    resolution: {integrity: sha512-7kGSwtagBIyfgKbvEwTrTHdP2DGHhl0Y3S+rYNEhYE1rJVDkN4AoqAeIe9GPYfwSkDqHViDk0MlzCZjgB8aypw==}
-    peerDependencies:
-      vue: '2'
-    dependencies:
-      tslib: 1.14.1
-      vue: 3.3.8(typescript@5.2.2)
-      vue-runtime-helpers: 1.1.2
-    dev: false
-
-  /vue-runtime-helpers@1.1.2:
-    resolution: {integrity: sha512-pZfGp+PW/IXEOyETE09xQHR1CKkR9HfHZdnMD/FVLUNI+HxYTa82evx5WrF6Kz4s82qtqHvMZ8MZpbk2zT2E1Q==}
     dev: false
 
   /vue-template-compiler@2.7.15:
