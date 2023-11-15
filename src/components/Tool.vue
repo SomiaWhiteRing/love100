@@ -1,21 +1,27 @@
 <template>
   <div style="display: inline-flex; gap: 36px">
     <!-- 写四个按钮，分别是存储，还原，清空，下载 -->
-    <button id="save" @click="save">存储</button>
-    <button id="restore" @click="restore">还原</button>
+    <button id="save" @click="save">导出</button>
+    <button id="restore" @click="restore">导入</button>
     <button id="clear" @click="clear">清空</button>
     <button id="download" @click="download">下载</button>
+  </div>
+  <div v-if="loading > 10" style="color: #999; font-size: 12px; margin-top: 10px">
+    字体加载中，若因国内访问不畅长时间未加载成功，
+    <button style="background: #f56c6c" @click="mountEvent">
+      请点此
+    </button>
   </div>
   <canvas ref="canvas" width="930" height="1060" />
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          position: relative;
-        ">
+                            padding: 16px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 16px;
+                            position: relative;
+                          ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -36,6 +42,9 @@ import tiejiliFont from "../assets/tiejili.ttf";
 
 const canvas = ref<HTMLCanvasElement>();
 
+const loading = ref<number>(0);
+const loadingInterval = ref<any>();
+
 // 用一个10*10的数组暂存图片
 let images = new Array(10).fill(0).map(() => new Array(10).fill(""));
 
@@ -52,8 +61,18 @@ const name = ref<string>("填表人：__________");
 const nameWidth = ref<number>(0);
 
 onMounted(async () => {
+  loadingInterval.value = setInterval(() => {
+    loading.value += 1;
+  }, 1000);
   const tiejili = new FontFace("tiejili", `url(${tiejiliFont})`);
   await tiejili.load();
+  mountEvent()
+});
+
+// 网络环境不畅时，跳过字体加载强制绘制页面
+function mountEvent() {
+  clearInterval(loadingInterval.value);
+  loading.value = 0;
   drawRects();
   drawTitle();
   drawCopyRight();
@@ -114,26 +133,7 @@ onMounted(async () => {
     }
   });
 
-  // 右键点击编辑图片
-  canvas.value!.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    const [x, y] = getGridIndex(e);
-    if (x === -1 || y === -1) return;
-    onCrop(x, y);
-  });
-
-  // 长按事件同右键点击事件
-  canvas.value!.addEventListener("mousedown", (e) => {
-    const [x, y] = getGridIndex(e);
-    if (x === -1 || y === -1) return;
-    const timer = setTimeout(() => {
-      onCrop(x, y);
-    }, 500);
-    canvas.value!.addEventListener("mouseup", () => {
-      clearTimeout(timer);
-    });
-  });
-});
+}
 
 // 绘制网格
 function drawRects() {
@@ -253,7 +253,6 @@ function onCrop(x: number, y: number) {
 // 图片编辑完成后的回调
 async function afterCrop() {
   cropperRef.value.getCropData(async (data: any) => {
-    console.log(data);
     const img = new Image();
     img.onload = () => {
       const [x, y] = [cropCoord.value!.x, cropCoord.value!.y];
@@ -292,7 +291,6 @@ function getMousePosition(e: MouseEvent) {
 // 获取鼠标在哪个格子
 function getGridIndex(e: MouseEvent) {
   const [x, y] = getMousePosition(e);
-  console.log(x, y);
   // 如果鼠标不在格子部分，返回[-1, -1]
   if (x % 92 < 9 || (y - 100) % 92 < 9 || y < 100 || y > 1030) return [-1, -1];
   const i = Math.floor((x - 11) / 92);
@@ -339,31 +337,47 @@ function loadLocalStorage() {
 
 // 存储数据副本
 function save() {
-  localStorage.setItem("imagesSaved", localStorage.getItem("images")!);
-  localStorage.setItem("titleSaved", localStorage.getItem("title")!);
-  localStorage.setItem("nameSaved", localStorage.getItem("name")!);
+  /** 改为组成json并下载 */
+  const json = {
+    images: localStorage.getItem("images")! || '',
+    title: localStorage.getItem("title")! || '',
+    name: localStorage.getItem("name")! || ''
+  };
+  const link = document.createElement("a");
+  link.download = `2023推TOP100${new Date().toLocaleString()}.json`;
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(json)]));
+  link.click();
   const saveButton = document.getElementById("save")!;
-  saveButton.innerText = "存储✅";
+  saveButton.innerText = "导出✅";
   setTimeout(() => {
-    saveButton.innerText = "存储";
+    saveButton.innerText = "导出";
   }, 2000);
 }
 
 // 还原数据副本
 function restore() {
-  if (!localStorage.getItem("imagesSaved")) {
-    alert("没有存储的数据");
-    return;
-  }
-  localStorage.setItem("images", localStorage.getItem("imagesSaved")!);
-  localStorage.setItem("title", localStorage.getItem("titleSaved")!);
-  localStorage.setItem("name", localStorage.getItem("nameSaved")!);
-  loadLocalStorage();
-  const restoreButton = document.getElementById("restore")!;
-  restoreButton.innerText = "还原✅";
-  setTimeout(() => {
-    restoreButton.innerText = "还原";
-  }, 2000);
+  // 上传json文件
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = () => {
+    const file = input.files![0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const json = JSON.parse(reader.result as string);
+      if (json.images) localStorage.setItem("images", json.images); else localStorage.removeItem("images");
+      if (json.title) localStorage.setItem("title", json.title); else localStorage.removeItem("title");
+      if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
+      loadLocalStorage();
+      const restoreButton = document.getElementById("restore")!;
+      restoreButton.innerText = "导入✅";
+      setTimeout(() => {
+        restoreButton.innerText = "导入";
+      }, 2000);
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 // 清空当前数据
