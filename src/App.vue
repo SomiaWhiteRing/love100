@@ -9,6 +9,6 @@ import Tool from './components/Tool.vue'
     <span>推TOP100生成器</span>
     <a href="https://weibo.com/6571509464" target="_blank" style="color: #000;">@苍旻白轮</a>
     <span>love100.shatranj.space</span>
-    <a href="https://github.com/SomiaWhiteRing" target="_blank" style="color: #000;">GitHub</a>
+    <a href="https://github.com/SomiaWhiteRing/love100" target="_blank" style="color: #000;">GitHub</a>
   </span>
 </template>
