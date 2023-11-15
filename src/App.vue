@@ -21,6 +21,6 @@ import { VGithubIcon } from 'v-github-icon';
     <span>love100.shatranj.space</span>
     <a href="https://github.com/SomiaWhiteRing/love100" target="_blank" style="color: #000">GitHub</a>
   </span>
-  <VGithubIcon url="https://github.com/SomiaWhiteRing/love100" />
+  <VGithubIcon position="top-left" url="https://github.com/SomiaWhiteRing/love100" />
 </template>
 
