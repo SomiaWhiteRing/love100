@@ -13,6 +13,6 @@ Star&Issue大欢迎！
 node v16.17.0
 
 ```bash
-yarn
-yarn dev
+pnpm i
+pnpm run dev
 ```
