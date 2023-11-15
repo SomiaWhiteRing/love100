@@ -53,13 +53,7 @@ const nameWidth = ref<number>(0);
 
 onMounted(async () => {
   const tiejili = new FontFace("tiejili", `url(${tiejiliFont})`);
-  const fontLoaded = await Promise.race([
-    new Promise((resolve) => setTimeout(resolve, 10000)),
-    tiejili.load(),
-  ]);
-  if (!fontLoaded) {
-    console.log("Font not loaded after 10 seconds");
-  }
+  await tiejili.load();
   drawRects();
   drawTitle();
   drawCopyRight();
