@@ -7,3 +7,12 @@
 感谢chatGPT老师。
 
 Star&Issue大欢迎！
+
+## 本地部署
+
+node v16.17.0
+
+```bash
+yarn
+yarn dev
+```
