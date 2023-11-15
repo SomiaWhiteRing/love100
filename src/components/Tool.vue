@@ -9,35 +9,19 @@
   <canvas ref="canvas" width="930" height="1060" />
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
-    <div
-      style="
+    <div style="
         padding: 16px;
         display: flex;
         flex-direction: column;
         gap: 16px;
         position: relative;
-      "
-    >
-      <div
-        style="position: absolute; top: 0; right: 0; cursor: pointer"
-        @click="cropperDialog!.close()"
-      >
+      ">
+      <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
-      <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px"
-        >编辑图片</span
-      >
-      <vue-cropper
-        ref="cropperRef"
-        style="width: 400px; height: 400px"
-        :img="cropperSrc"
-        fixed
-        autoCrop
-        fixedBox
-        centerBox
-        autoCropWidth="200"
-        autoCropHeight="200"
-      />
+      <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">编辑图片</span>
+      <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" fixed autoCrop fixedBox
+        centerBox autoCropWidth="200" autoCropHeight="200" />
       <div style="display: flex; gap: 16px; justify-content: flex-end">
         <button style="background: #f56c6c" @click="clearCrop()">清空</button>
         <button @click="afterCrop">确定</button>
@@ -106,7 +90,7 @@ onMounted(async () => {
       // 格子部分
       const [i, j] = getGridIndex(e);
       if (i === -1 || j === -1) return;
-      // 判断格子内是否有图片
+      // 判断格子内是否有图片，若有则调用图片编辑
       if (images[i][j]) {
         onCrop(i, j);
       } else {
@@ -197,7 +181,7 @@ function clickTitle(x: number, y: number) {
       getTextWidth(title.value, "bold 48px tiejili") + nameWidth.value >
       930 - 32 - 32
     ) {
-      alert("标题过长，请重新输入");
+      alert(`标题长度超出${getTextWidth(title.value, "bold 48px tiejili") + nameWidth.value - 930 + 32 + 32}，请尝试重新输入或缩短填表人名称`);
       title.value = (
         prompt(`请输入新标题`, title.value) || "2023推TOP100"
       ).trim();
@@ -217,12 +201,12 @@ function clickTitle(x: number, y: number) {
     // 计算填表人可用字数
     while (
       getTextWidth(newName, "bold 32px tiejili") + titleWidth.value >
-        930 - 32 - 32 ||
+      930 - 32 - 32 ||
       getTextWidth(`填表人：__________`, "bold 32px tiejili") +
-        titleWidth.value >
-        930 - 32 - 32
+      titleWidth.value >
+      930 - 32 - 32
     ) {
-      alert("填表人过长，请重新输入");
+      alert(`填表人名称长度超出${getTextWidth(newName, "bold 32px tiejili") + titleWidth.value - 930 + 32 + 32}，请尝试重新输入或缩短标题`);
       newName = `填表人：${(
         prompt(
           "请输入填表人的名字",
@@ -245,10 +229,10 @@ function drawCopyRight() {
   ctx.fillText(
     text1,
     930 -
-      getTextWidth(text1, "12px tiejili") -
-      16 -
-      getTextWidth(text3, "12px tiejili") -
-      16,
+    getTextWidth(text1, "12px tiejili") -
+    16 -
+    getTextWidth(text3, "12px tiejili") -
+    16,
     1060 - 16
   );
   ctx.fillText(
