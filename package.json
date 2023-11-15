@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.3.4"
+    "vue": "^3.3.4",
+    "vue-cropper": "^1.1.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",
