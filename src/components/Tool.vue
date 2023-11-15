@@ -10,12 +10,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        position: relative;
-      ">
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          position: relative;
+        ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -53,7 +53,13 @@ const nameWidth = ref<number>(0);
 
 onMounted(async () => {
   const tiejili = new FontFace("tiejili", `url(${tiejiliFont})`);
-  await tiejili.load();
+  const fontLoaded = await Promise.race([
+    new Promise((resolve) => setTimeout(resolve, 10000)),
+    tiejili.load(),
+  ]);
+  if (!fontLoaded) {
+    console.log("Font not loaded after 10 seconds");
+  }
   drawRects();
   drawTitle();
   drawCopyRight();
