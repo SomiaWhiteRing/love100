@@ -65,7 +65,7 @@
         </div>
       </div>
       <div style="display: flex; gap: 16px; justify-content: flex-end">
-        <button v-if="!DDMode" style="background: #f56c6c" @click="DDMode = true">
+        <button v-if="!DDMode" style="background: #f56c6c" @click="DDMode = true; resizeCols = 20; resizeRows = 20">
           我的意思是，格子不够用了
         </button>
         <button v-if="DDMode" style="background: #f5a623"
@@ -444,7 +444,7 @@ function save() {
     cols: localStorage.getItem("cols")! || 10,
   };
   const link = document.createElement("a");
-  link.download = `2023推TOP100${new Date().toLocaleString()}.json`;
+  link.download = `${title.value}.json`;
   link.href = URL.createObjectURL(new Blob([JSON.stringify(json)]));
   link.click();
   const saveButton = document.getElementById("save")!;
@@ -519,7 +519,7 @@ function submitResize() {
   // 如果比例发生了变化且有已经填好的图片，则弹窗提醒用户图片会变形
   if (resizeRows.value / resizeCols.value !== rows.value / cols.value &&
     localStorage.getItem("images")?.includes("data:image")) {
-    if (!confirm("调整后的格子比例不同，会导致已填入的图片无法占满格子，是否继续？")) return;
+    if (!confirm("调整后的纵横比不同，会导致已填入的图片无法占满格子，是否继续？")) return;
   }
   // 计算原格子数，如果原标题含有"TOP + 总格子数，则也修改标题"
   const oldGrids = rows.value * cols.value;
