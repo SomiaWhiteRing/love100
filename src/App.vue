@@ -11,7 +11,7 @@ import { VGithubIcon } from 'v-github-icon';
   <div><span style="color: red;">New!</span> 追加表内拖拽功能，可以自由交换已填入格子的位置！</div>
   <div><span style="color: red;">New!</span> 追加解除标题限制开关，启用后标题和填表人字样可以更自由地填写。</div>
   <div>（若清空无法修改，关闭解除限制开关即可还原初始值）</div>
-  <div v-if="/Mobi|Android|iPhone/i.test(navigator.userAgent)" style="color: red;">
+  <div v-if="typeof window.orientation !== 'undefined'" style="color: red;">
     手机端建议右上角浏览器打开/善用导出，防止误触退出页面丢失缓存
   </div>
   <Tool />
