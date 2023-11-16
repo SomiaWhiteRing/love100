@@ -28,7 +28,7 @@
       </div>
       <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">编辑图片</span>
       <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed centerBox
-        :fixedNumber="[rows, cols]" />
+        :fixedNumber="[920 / cols - 12, 920 / rows - 12]" />
       <div style="display: flex; gap: 16px; justify-content: flex-end">
         <button style="background: #f56c6c" @click="clearCrop()">清空</button>
         <button @click="afterCrop">确定</button>
@@ -351,14 +351,16 @@ function getGridIndex(e: MouseEvent) {
 // 在指定格子上绘制图片
 function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
-  ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
-  // 绘制图片时若比例与格子不同则自动裁切
   const gridWidth = Math.floor(920 / cols.value) - 12;
   const gridHeight = Math.floor(920 / rows.value) - 12;
+  ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, gridWidth, gridHeight);
+  // 绘制图片时若比例与格子不同则自动裁切
   const imgWidth = img.width;
   const imgHeight = img.height;
   const imgRatio = imgWidth / imgHeight;
   const gridRatio = gridWidth / gridHeight;
+  console.log(imgHeight, imgWidth, imgRatio)
+  console.log(gridHeight, gridWidth, gridRatio)
   let drawWidth, drawHeight, drawX, drawY;
   if (imgRatio > gridRatio) {
     drawWidth = gridWidth;
