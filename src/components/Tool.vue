@@ -21,12 +21,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-                    padding: 16px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                    position: relative;
-                  ">
+                            padding: 16px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 16px;
+                            position: relative;
+                          ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -42,12 +42,12 @@
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
     <div style="
-                    padding: 16px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                    position: relative;
-                  ">
+                            padding: 16px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 16px;
+                            position: relative;
+                          ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
         ✖
       </div>
@@ -55,12 +55,12 @@
       <div style="display: flex; align-items: center">
         <div style="width: 50px;" />
         <input type="range" min="1" :max="DDMode ? 20 : 10
-          " v-model="resizeCols" style="width: 400px;">
+        " v-model="resizeCols" style="width: 400px;">
       </div>
       <div style="display: flex; align-items: center">
         <div style="display: flex; flex-direction: column; align-items: center;width: 50px;">
           <input type="range" min="1" :max="DDMode ? 20 : 10
-            " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
+          " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
         </div>
         <div style="width: 400px; height: 400px; display: flex; flex-direction: column; gap: 2px;">
           <div v-for="i in Number(resizeRows)" :key="i" style="display: flex; flex: 1; gap: 2px;">
@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import tiejiliFont from "../assets/tiejili.ttf";
+import Dexie, { type Table } from "dexie";
 
 const canvas = ref<HTMLCanvasElement>();
 
@@ -136,6 +137,29 @@ const resizeCols = ref<number>(10);
 
 // DDPower!
 const DDMode = ref<boolean>(false);
+
+// 用indexDB来缓存图片
+interface Image {
+  axis: string;
+  src: string;
+  sourceSrc: string;
+}
+
+class Love100DB extends Dexie {
+  images!: Table<Image>;
+  constructor() {
+    super("love100");
+    this.version(1).stores({
+      images: '&axis, src, sourceSrc'
+    });
+  }
+}
+
+const db = new Love100DB();
+
+db.version(1).stores({
+  images: '&axis, src, sourceSrc'
+});
 
 onMounted(async () => {
   loadingInterval.value = setInterval(() => {
@@ -214,7 +238,11 @@ function mountEvent() {
         ctx.clearRect(drawX, drawY, drawWidth, drawHeight);
         ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
         images[i][j] = img.src;
-        localStorage.setItem("images", JSON.stringify(images));
+        db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
+          if (e === 0) {
+            db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
+          }
+        });
       };
       img.src = images[i][j];
     }
@@ -227,7 +255,8 @@ function mountEvent() {
             const temp = JSON.parse(JSON.stringify(images[_i][_j]));
             images[_i][_j] = JSON.parse(JSON.stringify(images[i][j]));
             images[i][j] = temp;
-            localStorage.setItem("images", JSON.stringify(images));
+            db.images.where("axis").equals(`${_i},${_j}`).modify({ src: images[_i][_j] });
+            db.images.where("axis").equals(`${i},${j}`).modify({ src: images[i][j] });
             // 清空并重绘这两个格子
             const img = new Image();
             img.onload = () => {
@@ -244,7 +273,8 @@ function mountEvent() {
           } else {
             images[_i][_j] = images[i][j];
             images[i][j] = "";
-            localStorage.setItem("images", JSON.stringify(images));
+            // 修改数据库里对应的主键
+            db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
             const img = new Image();
             img.onload = () => {
               drawImageOnGrid(img, _i, _j);
@@ -268,6 +298,8 @@ function mountEvent() {
               const img = new Image();
               img.onload = () => {
                 drawImageOnGrid(img, _i, _j);
+                // 图片上传时存入数据库
+                db.images.put({ axis: `${_i},${_j}`, src: img.src, sourceSrc: img.src });
               };
               img.src = reader.result as string;
             };
@@ -419,7 +451,15 @@ function drawCopyRight() {
 // 调用图片编辑组件
 function onCrop(x: number, y: number) {
   if (!images[x][y]) return;
-  cropperSrc.value = images[x][y];
+  // cropperSrc.value = images[x][y];
+  // 获取sourceSrc
+  db.images.where("axis").equals(`${x},${y}`).first((e) => {
+    if (e) {
+      cropperSrc.value = e.sourceSrc;
+    } else {
+      cropperSrc.value = images[x][y];
+    }
+  });
   cropCoord.value = { x, y };
   cropperDialog.value!.showModal();
 }
@@ -442,7 +482,7 @@ function clearCrop(i, j) {
   const ctx = canvas.value!.getContext("2d")!;
   ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
   images[i][j] = "";
-  localStorage.setItem("images", JSON.stringify(images));
+  db.images.delete(`${i},${j}`);
   cropperDialog.value!.close();
 }
 
@@ -497,7 +537,11 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   // 将图片暂存在数组中
   images[i][j] = img.src;
-  localStorage.setItem("images", JSON.stringify(images));
+  db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
+    if (e === 0) {
+      db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
+    }
+  });
 }
 
 // 从localStorage中读取数据
@@ -534,10 +578,22 @@ function loadLocalStorage() {
           img.onload = () => {
             drawImageOnGrid(img, i, j);
           };
+          db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
         }
       }
     }
+    localStorage.removeItem("images");
   }
+  db.images.toArray().then((e) => {
+    e.forEach((item) => {
+      const [i, j] = item.axis.split(",").map((e) => Number(e));
+      const img = new Image();
+      img.src = item.src;
+      img.onload = () => {
+        drawImageOnGrid(img, i, j);
+      };
+    });
+  });
   if (localStorage.getItem("title")) {
     title.value = localStorage.getItem("title")!;
     drawTitle();
@@ -549,7 +605,7 @@ function loadLocalStorage() {
 }
 
 // 存储数据副本
-function save() {
+async function save() {
   /** 改为组成json并下载 */
   const json = {
     images: localStorage.getItem("images")! || '',
@@ -558,6 +614,9 @@ function save() {
     rows: localStorage.getItem("rows")! || 10,
     cols: localStorage.getItem("cols")! || 10,
   };
+  await db.images.toArray().then((e) => {
+    json.images = JSON.stringify(e);
+  });
   const link = document.createElement("a");
   link.download = `${title.value}.json`;
   link.href = URL.createObjectURL(new Blob([JSON.stringify(json)]));
@@ -580,7 +639,24 @@ function restore() {
     const reader = new FileReader();
     reader.onload = () => {
       const json = JSON.parse(reader.result as string);
-      if (json.images) localStorage.setItem("images", json.images); else localStorage.removeItem("images");
+      if (json.images) {
+        images = JSON.parse(json.images);
+        // 清空数据库
+        db.images.clear();
+        if (!json.images.includes("sourceSrc")) {
+          for (let i = 0; i < cols.value; i++) {
+            for (let j = 0; j < rows.value; j++) {
+              if (images[i] && images[i][j]) {
+                db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
+              }
+            }
+          }
+        } else {
+          images.map((item: any) => {
+            db.images.put(item);
+          });
+        }
+      }
       if (json.title) localStorage.setItem("title", json.title); else localStorage.removeItem("title");
       if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
       if (json.rows) localStorage.setItem("rows", json.rows); else localStorage.removeItem("rows");
@@ -600,6 +676,7 @@ function restore() {
 // 清空当前数据
 function clear() {
   localStorage.removeItem("images");
+  db.images.clear();
   images = new Array(20).fill(0).map(() => new Array(20).fill(""));
   drawRects();
   const clearButton = document.getElementById("clear")!;
@@ -633,7 +710,7 @@ function showResizeDialog() {
 function submitResize() {
   // 如果比例发生了变化且有已经填好的图片，则弹窗提醒用户图片会变形
   if (resizeRows.value / resizeCols.value !== rows.value / cols.value &&
-    localStorage.getItem("images")?.includes("data:image")) {
+    JSON.stringify(images).includes("data:image")) {
     if (!confirm("调整后的纵横比不同，会导致已填入的图片无法占满格子，是否继续？")) return;
   }
   // 计算原格子数，如果原标题含有"TOP + 总格子数，则也修改标题"
