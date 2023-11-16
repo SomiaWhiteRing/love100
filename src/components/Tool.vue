@@ -277,6 +277,8 @@ function clickTitle(x: number, y: number) {
 // 绘制版权信息
 function drawCopyRight() {
   const ctx = canvas.value!.getContext("2d")!;
+  ctx.fillStyle = "#fafafa";
+  ctx.fillRect(0, 1030, 930, 30);
   const text1 = "推TOP100生成器";
   const text2 = "@苍旻白轮";
   const text3 = "love100.shatranj.space";
@@ -534,8 +536,6 @@ function submitResize() {
   localStorage.setItem("cols", cols.value.toString());
   resizeDialog.value!.close();
   drawRects();
-  drawTitle();
-  drawCopyRight();
   loadLocalStorage();
 }
 
