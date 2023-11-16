@@ -500,6 +500,13 @@ function submitResize() {
     localStorage.getItem("images")?.includes("data:image")) {
     if (!confirm("调整后的格子比例不同，会导致已填入的图片无法占满格子，是否继续？")) return;
   }
+  // 计算原格子数，如果原标题含有"TOP + 总格子数，则也修改标题"
+  const oldGrids = rows.value * cols.value;
+  if (title.value.includes(`TOP${oldGrids}`)) {
+    title.value = title.value.replace(`TOP${oldGrids}`, `TOP${resizeRows.value * resizeCols.value}`);
+    localStorage.setItem("title", title.value);
+    drawTitle();
+  }
   rows.value = resizeRows.value;
   cols.value = resizeCols.value;
   localStorage.setItem("rows", rows.value.toString());
