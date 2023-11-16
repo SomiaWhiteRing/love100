@@ -21,12 +21,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-                            padding: 16px;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 16px;
-                            position: relative;
-                          ">
+                                                        padding: 16px;
+                                                        display: flex;
+                                                        flex-direction: column;
+                                                        gap: 16px;
+                                                        position: relative;
+                                                      ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -42,12 +42,12 @@
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
     <div style="
-                            padding: 16px;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 16px;
-                            position: relative;
-                          ">
+                                                        padding: 16px;
+                                                        display: flex;
+                                                        flex-direction: column;
+                                                        gap: 16px;
+                                                        position: relative;
+                                                      ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
         ✖
       </div>
@@ -545,70 +545,76 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
 }
 
 // 从localStorage中读取数据
-function loadLocalStorage() {
-  if (localStorage.getItem("titleLimit")) {
-    titleLimit.value = localStorage.getItem("titleLimit") === "true";
-  }
-  if (localStorage.getItem("rows")) {
-    rows.value = Number(localStorage.getItem("rows")!);
-    drawRects();
-  }
-  if (localStorage.getItem("cols")) {
-    cols.value = Number(localStorage.getItem("cols")!);
-    drawRects();
-  }
-  if (localStorage.getItem("images")) {
-    images = JSON.parse(localStorage.getItem("images")!);
-    // 旧版本兼容：如果images不是20*20，则扩充
-    if (images.length < 20) {
-      const newImages = new Array(20).fill(0).map(() => new Array(20).fill(""));
-      for (let i = 0; i < images.length; i++) {
-        for (let j = 0; j < images[i].length; j++) {
-          newImages[i][j] = images[i][j];
+async function loadLocalStorage() {
+  return new Promise<void>(async (resolve) => {
+    if (localStorage.getItem("titleLimit")) {
+      titleLimit.value = localStorage.getItem("titleLimit") === "true";
+    }
+    if (localStorage.getItem("rows")) {
+      rows.value = Number(localStorage.getItem("rows")!);
+      drawRects();
+    }
+    if (localStorage.getItem("cols")) {
+      cols.value = Number(localStorage.getItem("cols")!);
+      drawRects();
+    }
+    if (localStorage.getItem("images")) {
+      images = JSON.parse(localStorage.getItem("images")!);
+      // 旧版本兼容：如果images不是20*20，则扩充
+      if (images.length < 20) {
+        const newImages = new Array(20).fill(0).map(() => new Array(20).fill(""));
+        for (let i = 0; i < images.length; i++) {
+          for (let j = 0; j < images[i].length; j++) {
+            newImages[i][j] = images[i][j];
+          }
+        }
+        images = newImages;
+      }
+      for (let i = 0; i < cols.value; i++) {
+        for (let j = 0; j < rows.value; j++) {
+          if (images[i] && images[i][j]) {
+            // 根据images[i][j]创建一个Image对象
+            const img = new Image();
+            img.src = images[i][j];
+            img.onload = () => {
+              drawImageOnGrid(img, i, j);
+            };
+            await db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
+          }
         }
       }
-      images = newImages;
+      localStorage.removeItem("images");
     }
-    for (let i = 0; i < cols.value; i++) {
-      for (let j = 0; j < rows.value; j++) {
-        if (images[i] && images[i][j]) {
-          // 根据images[i][j]创建一个Image对象
-          const img = new Image();
-          img.src = images[i][j];
-          img.onload = () => {
-            drawImageOnGrid(img, i, j);
-          };
-          db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
-        }
-      }
-    }
-    localStorage.removeItem("images");
-  }
-  db.images.toArray().then((e) => {
-    e.forEach((item) => {
-      const [i, j] = item.axis.split(",").map((e) => Number(e));
-      const img = new Image();
-      img.src = item.src;
-      img.onload = () => {
-        drawImageOnGrid(img, i, j);
-      };
+    await db.images.toArray().then((e) => {
+      e.forEach((item) => {
+        const [i, j] = item.axis.split(",").map((e) => Number(e));
+        const img = new Image();
+        img.src = item.src;
+        img.onload = () => {
+          drawImageOnGrid(img, i, j);
+        };
+      });
     });
+    if (localStorage.getItem("title")) {
+      title.value = localStorage.getItem("title")!;
+      drawTitle();
+    }
+    if (localStorage.getItem("name")) {
+      name.value = localStorage.getItem("name")!;
+      drawTitle();
+    }
+    resolve();
   });
-  if (localStorage.getItem("title")) {
-    title.value = localStorage.getItem("title")!;
-    drawTitle();
-  }
-  if (localStorage.getItem("name")) {
-    name.value = localStorage.getItem("name")!;
-    drawTitle();
-  }
 }
 
 // 存储数据副本
 async function save() {
+  const saveButton = document.getElementById("save")!;
+  saveButton.innerText = "导出中...";
+  saveButton.style.backgroundColor = "#f56c6c";
   /** 改为组成json并下载 */
   const json = {
-    images: localStorage.getItem("images")! || '',
+    images: '',
     title: localStorage.getItem("title")! || '',
     name: localStorage.getItem("name")! || '',
     rows: localStorage.getItem("rows")! || 10,
@@ -621,8 +627,8 @@ async function save() {
   link.download = `${title.value}.json`;
   link.href = URL.createObjectURL(new Blob([JSON.stringify(json)]));
   link.click();
-  const saveButton = document.getElementById("save")!;
   saveButton.innerText = "导出✅";
+  saveButton.style.backgroundColor = "#409eff";
   setTimeout(() => {
     saveButton.innerText = "导出";
   }, 2000);
@@ -635,18 +641,25 @@ function restore() {
   input.type = "file";
   input.accept = ".json";
   input.onchange = () => {
+    images = new Array(20).fill(0).map(() => new Array(20).fill(""));
+    const restoreButton = document.getElementById("restore")!;
     const file = input.files![0];
     const reader = new FileReader();
-    reader.onload = () => {
+    restoreButton.innerText = "导入中...";
+    restoreButton.style.backgroundColor = "#f56c6c";
+    reader.onload = async () => {
       const json = JSON.parse(reader.result as string);
       if (json.images) {
-        images = JSON.parse(json.images);
+        const images = JSON.parse(json.images);
         // 清空数据库
         db.images.clear();
         if (!json.images.includes("sourceSrc")) {
+          // 旧版本导出兼容
           for (let i = 0; i < cols.value; i++) {
             for (let j = 0; j < rows.value; j++) {
+              // console.log(i, j);
               if (images[i] && images[i][j]) {
+                console.log('active', i, j);
                 db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
               }
             }
@@ -661,9 +674,9 @@ function restore() {
       if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
       if (json.rows) localStorage.setItem("rows", json.rows); else localStorage.removeItem("rows");
       if (json.cols) localStorage.setItem("cols", json.cols); else localStorage.removeItem("cols");
-      loadLocalStorage();
-      const restoreButton = document.getElementById("restore")!;
+      await loadLocalStorage();
       restoreButton.innerText = "导入✅";
+      restoreButton.style.backgroundColor = "#409eff";
       setTimeout(() => {
         restoreButton.innerText = "导入";
       }, 2000);
