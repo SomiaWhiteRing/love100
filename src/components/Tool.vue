@@ -5,6 +5,7 @@
     <button id="restore" @click="restore">导入</button>
     <button id="clear" @click="clear">清空</button>
     <button id="download" @click="download">下载</button>
+    <button style="background: #67c23a" @click="showResizeDialog()">格子太多了！</button>
   </div>
   <div v-if="loading > 10" style="color: #999; font-size: 12px; margin-top: 10px">
     字体加载中，若因国内访问不畅长时间未加载成功，
@@ -16,21 +17,54 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-                            padding: 16px;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 16px;
-                            position: relative;
-                          ">
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
       <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">编辑图片</span>
-      <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" fixed autoCrop fixedBox
-        centerBox autoCropWidth="200" autoCropHeight="200" />
+      <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed centerBox
+        :fixedNumber="[rows, cols]" />
       <div style="display: flex; gap: 16px; justify-content: flex-end">
         <button style="background: #f56c6c" @click="clearCrop()">清空</button>
         <button @click="afterCrop">确定</button>
+      </div>
+    </div>
+  </dialog>
+  <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
+  <dialog ref="resizeDialog">
+    <div style="
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    ">
+      <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
+        ✖
+      </div>
+      <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">调整格子数量</span>
+      <div style="display: flex; align-items: center">
+        <div style="width: 50px;" />
+        <input type="range" min="1" max="10" v-model="resizeCols" style="width: 400px;">
+      </div>
+      <div style="display: flex; align-items: center">
+        <div style="display: flex; flex-direction: column; align-items: center;width: 50px;">
+          <input type="range" min="1" max="10" v-model="resizeRows"
+            style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
+        </div>
+        <div style="width: 400px; height: 400px; display: flex; flex-direction: column; gap: 2px;">
+          <div v-for="i in Number(resizeRows)" :key="i" style="display: flex; flex: 1; gap: 2px;">
+            <div v-for="j in Number(resizeCols)" :key="j" style="flex: 1; background: #999;" />
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 16px; justify-content: flex-end">
+        <button @click="submitResize">确定</button>
       </div>
     </div>
   </dialog>
@@ -59,6 +93,15 @@ const title = ref<string>("2023推TOP100");
 const titleWidth = ref<number>(0);
 const name = ref<string>("填表人：__________");
 const nameWidth = ref<number>(0);
+
+// 格子的行数和列数
+const rows = ref<number>(10);
+const cols = ref<number>(10);
+
+// 调整格子数量的变量
+const resizeDialog = ref<HTMLDialogElement>();
+const resizeRows = ref<number>(10);
+const resizeCols = ref<number>(10);
 
 onMounted(async () => {
   loadingInterval.value = setInterval(() => {
@@ -105,7 +148,7 @@ function mountEvent() {
     const [x, y] = getMousePosition(e);
     if (y < 100) {
       clickTitle(x, y);
-    } else if (y < 1030) {
+    } else if (y < (100 + Math.floor(930 / rows.value) * rows.value)) {
       // 格子部分
       const [i, j] = getGridIndex(e);
       if (i === -1 || j === -1) return;
@@ -139,12 +182,12 @@ function mountEvent() {
 function drawRects() {
   const ctx = canvas.value!.getContext("2d")!;
   ctx.fillStyle = "#fafafa";
-  ctx.fillRect(0, 0, 930, 1060);
+  ctx.fillRect(0, 100, 930, 930);
   ctx.fillStyle = "#FFF";
-  for (let i = 0; i < 10; i++) {
-    for (let j = 0; j < 10; j++) {
-      ctx.strokeRect(10 + 92 * i, 110 + 92 * j, 80, 80);
-      ctx.fillRect(11 + 92 * i, 111 + 92 * j, 78, 78);
+  for (let i = 0; i < cols.value; i++) {
+    for (let j = 0; j < rows.value; j++) {
+      ctx.strokeRect(10 + Math.floor(930 / cols.value) * i, 110 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 10, Math.floor(930 / rows.value) - 10);
+      ctx.fillRect(11 + Math.floor(930 / cols.value) * i, 111 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 12, Math.floor(930 / rows.value) - 12);
     }
   }
 }
@@ -224,15 +267,22 @@ function clickTitle(x: number, y: number) {
 function drawCopyRight() {
   const ctx = canvas.value!.getContext("2d")!;
   const text1 = "推TOP100生成器";
+  const text2 = "@苍旻白轮";
   const text3 = "love100.shatranj.space";
   ctx.fillStyle = "#999";
   ctx.fillText(
     text1,
     930 -
-    getTextWidth(text1, "12px tiejili") -
-    16 -
-    getTextWidth(text3, "12px tiejili") -
-    16,
+    getTextWidth(text1, "12px tiejili") - 16 -
+    getTextWidth(text2, "12px tiejili") - 16 -
+    getTextWidth(text3, "12px tiejili") - 16,
+    1060 - 16
+  );
+  ctx.fillText(
+    text2,
+    930 -
+    getTextWidth(text2, "12px tiejili") - 16 -
+    getTextWidth(text3, "12px tiejili") - 16,
     1060 - 16
   );
   ctx.fillText(
@@ -267,7 +317,7 @@ async function afterCrop() {
 function clearCrop() {
   const [i, j] = [cropCoord.value!.x, cropCoord.value!.y];
   const ctx = canvas.value!.getContext("2d")!;
-  ctx.clearRect(11 + 92 * i, 111 + 92 * j, 78, 78);
+  ctx.clearRect(11 + Math.floor(930 / cols.value) * i, 111 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 12, Math.floor(930 / rows.value) - 12);
   images[i][j] = "";
   localStorage.setItem("images", JSON.stringify(images));
   cropperDialog.value!.close();
@@ -292,17 +342,36 @@ function getMousePosition(e: MouseEvent) {
 function getGridIndex(e: MouseEvent) {
   const [x, y] = getMousePosition(e);
   // 如果鼠标不在格子部分，返回[-1, -1]
-  if (x % 92 < 9 || (y - 100) % 92 < 9 || y < 100 || y > 1030) return [-1, -1];
-  const i = Math.floor((x - 11) / 92);
-  const j = Math.floor((y - 100) / 92);
+  if (x % Math.floor(930 / cols.value) < 9 || (y - 100) % Math.floor(930 / rows.value) < 9 || y < 100 || y > (100 + Math.floor(930 / rows.value) * rows.value)) return [-1, -1];
+  const i = Math.floor((x - 11) / Math.floor(930 / cols.value));
+  const j = Math.floor((y - 100) / Math.floor(930 / rows.value));
   return [i, j];
 }
 
 // 在指定格子上绘制图片
 function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
-  ctx.clearRect(11 + 92 * i, 111 + 92 * j, 78, 78);
-  ctx.drawImage(img, 11 + 92 * i, 111 + 92 * j, 78, 78);
+  ctx.clearRect(11 + Math.floor(930 / cols.value) * i, 111 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 12, Math.floor(930 / rows.value) - 12);
+  // 绘制图片时若比例与格子不同则自动裁切
+  const gridWidth = Math.floor(930 / cols.value) - 12;
+  const gridHeight = Math.floor(930 / rows.value) - 12;
+  const imgWidth = img.width;
+  const imgHeight = img.height;
+  const imgRatio = imgWidth / imgHeight;
+  const gridRatio = gridWidth / gridHeight;
+  let drawWidth, drawHeight, drawX, drawY;
+  if (imgRatio > gridRatio) {
+    drawWidth = gridWidth;
+    drawHeight = drawWidth / imgRatio;
+    drawX = 11 + Math.floor(930 / cols.value) * i;
+    drawY = 111 + Math.floor(930 / rows.value) * j + (gridHeight - drawHeight) / 2;
+  } else {
+    drawHeight = gridHeight;
+    drawWidth = drawHeight * imgRatio;
+    drawX = 11 + Math.floor(930 / cols.value) * i + (gridWidth - drawWidth) / 2;
+    drawY = 111 + Math.floor(930 / rows.value) * j;
+  }
+  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   // 将图片暂存在数组中
   images[i][j] = img.src;
   localStorage.setItem("images", JSON.stringify(images));
@@ -310,10 +379,18 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
 
 // 从localStorage中读取数据
 function loadLocalStorage() {
+  if (localStorage.getItem("rows")) {
+    rows.value = Number(localStorage.getItem("rows")!);
+    drawRects();
+  }
+  if (localStorage.getItem("cols")) {
+    cols.value = Number(localStorage.getItem("cols")!);
+    drawRects();
+  }
   if (localStorage.getItem("images")) {
     images = JSON.parse(localStorage.getItem("images")!);
-    for (let i = 0; i < 10; i++) {
-      for (let j = 0; j < 10; j++) {
+    for (let i = 0; i < rows.value; i++) {
+      for (let j = 0; j < cols.value; j++) {
         if (images[i][j]) {
           // 根据images[i][j]创建一个Image对象
           const img = new Image();
@@ -341,7 +418,9 @@ function save() {
   const json = {
     images: localStorage.getItem("images")! || '',
     title: localStorage.getItem("title")! || '',
-    name: localStorage.getItem("name")! || ''
+    name: localStorage.getItem("name")! || '',
+    rows: localStorage.getItem("rows")! || 10,
+    cols: localStorage.getItem("cols")! || 10,
   };
   const link = document.createElement("a");
   link.download = `2023推TOP100${new Date().toLocaleString()}.json`;
@@ -368,6 +447,8 @@ function restore() {
       if (json.images) localStorage.setItem("images", json.images); else localStorage.removeItem("images");
       if (json.title) localStorage.setItem("title", json.title); else localStorage.removeItem("title");
       if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
+      if (json.rows) localStorage.setItem("rows", json.rows); else localStorage.removeItem("rows");
+      if (json.cols) localStorage.setItem("cols", json.cols); else localStorage.removeItem("cols");
       loadLocalStorage();
       const restoreButton = document.getElementById("restore")!;
       restoreButton.innerText = "导入✅";
@@ -385,9 +466,13 @@ function clear() {
   localStorage.removeItem("images");
   localStorage.removeItem("title");
   localStorage.removeItem("name");
+  localStorage.removeItem("rows");
+  localStorage.removeItem("cols");
   images = new Array(10).fill(0).map(() => new Array(10).fill(""));
   title.value = "2023推TOP100";
   name.value = "填表人：__________";
+  rows.value = 10;
+  cols.value = 10;
   drawRects();
   drawTitle();
   drawCopyRight();
@@ -410,6 +495,32 @@ function download() {
   link.href = canvas.value!.toDataURL();
   link.click();
 }
+
+// 打开调整格子数量的弹窗
+function showResizeDialog() {
+  resizeRows.value = rows.value;
+  resizeCols.value = cols.value;
+  resizeDialog.value!.showModal();
+}
+
+// 提交调整格子数量的弹窗
+function submitResize() {
+  // 如果比例发生了变化且有已经填好的图片，则弹窗提醒用户图片会变形
+  if (resizeRows.value / resizeCols.value !== rows.value / cols.value &&
+    localStorage.getItem("images")?.includes("data:image")) {
+    if (!confirm("调整后的格子比例不同，会导致已填入的图片变形，是否继续？")) return;
+  }
+  rows.value = resizeRows.value;
+  cols.value = resizeCols.value;
+  localStorage.setItem("rows", rows.value.toString());
+  localStorage.setItem("cols", cols.value.toString());
+  resizeDialog.value!.close();
+  drawRects();
+  drawTitle();
+  drawCopyRight();
+  loadLocalStorage();
+}
+
 </script>
 
 <style>
