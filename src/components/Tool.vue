@@ -464,18 +464,8 @@ function restore() {
 // 清空当前数据
 function clear() {
   localStorage.removeItem("images");
-  localStorage.removeItem("title");
-  localStorage.removeItem("name");
-  localStorage.removeItem("rows");
-  localStorage.removeItem("cols");
   images = new Array(10).fill(0).map(() => new Array(10).fill(""));
-  title.value = "2023推TOP100";
-  name.value = "填表人：__________";
-  rows.value = 10;
-  cols.value = 10;
   drawRects();
-  drawTitle();
-  drawCopyRight();
   const clearButton = document.getElementById("clear")!;
   clearButton.innerText = "清空✅";
   setTimeout(() => {
