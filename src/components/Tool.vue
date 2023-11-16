@@ -50,15 +50,13 @@
       <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">调整格子数量</span>
       <div style="display: flex; align-items: center">
         <div style="width: 50px;" />
-        <input type="range" min="1" :max="
-          DDMode ? 20 : 10
-        " v-model="resizeCols" style="width: 400px;">
+        <input type="range" min="1" :max="DDMode ? 20 : 10
+          " v-model="resizeCols" style="width: 400px;">
       </div>
       <div style="display: flex; align-items: center">
         <div style="display: flex; flex-direction: column; align-items: center;width: 50px;">
-          <input type="range" min="1" :max="
-            DDMode ? 20 : 10
-          " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
+          <input type="range" min="1" :max="DDMode ? 20 : 10
+            " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
         </div>
         <div style="width: 400px; height: 400px; display: flex; flex-direction: column; gap: 2px;">
           <div v-for="i in Number(resizeRows)" :key="i" style="display: flex; flex: 1; gap: 2px;">
@@ -561,7 +559,7 @@ button {
 }
 
 button:hover {
-  background-color: #66b1ff;
+  opacity: 0.8;
 }
 
 button:focus {
