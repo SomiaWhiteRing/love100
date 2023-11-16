@@ -21,12 +21,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-                                                        padding: 16px;
-                                                        display: flex;
-                                                        flex-direction: column;
-                                                        gap: 16px;
-                                                        position: relative;
-                                                      ">
+                                                          padding: 16px;
+                                                          display: flex;
+                                                          flex-direction: column;
+                                                          gap: 16px;
+                                                          position: relative;
+                                                        ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -42,12 +42,12 @@
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
     <div style="
-                                                        padding: 16px;
-                                                        display: flex;
-                                                        flex-direction: column;
-                                                        gap: 16px;
-                                                        position: relative;
-                                                      ">
+                                                          padding: 16px;
+                                                          display: flex;
+                                                          flex-direction: column;
+                                                          gap: 16px;
+                                                          position: relative;
+                                                        ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
         ✖
       </div>
@@ -619,6 +619,7 @@ async function save() {
     name: localStorage.getItem("name")! || '',
     rows: localStorage.getItem("rows")! || 10,
     cols: localStorage.getItem("cols")! || 10,
+    time: new Date().toLocaleString()
   };
   await db.images.toArray().then((e) => {
     json.images = JSON.stringify(e);
