@@ -5,14 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/love.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>推100</title>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=%GOOGLE_ANALYTICS_KEY%"></script>
     <script>
-      var _hmt = _hmt || [];
-      (function() {
-        var hm = document.createElement("script");
-        hm.src = "https://hm.baidu.com/hm.js?%VITE_BAIDU_ANALYTICS_KEY%";
-        var s = document.getElementsByTagName("script")[0]; 
-        s.parentNode.insertBefore(hm, s);
-      })();
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '%GOOGLE_ANALYTICS_KEY%');
     </script>
   </head>
   <body>
