@@ -6,6 +6,10 @@
     <button id="clear" @click="clear">清空</button>
     <button id="download" @click="download">下载</button>
     <button style="background: #67c23a" @click="showResizeDialog()">格子太多了！</button>
+    <span style="line-height: 32px; display: inline-flex; gap: 4px; align-items: center">
+      <input type="checkbox" v-model="titleLimit" />
+      <label>解除标题限制</label>
+    </span>
   </div>
   <div v-if="loading > 10" style="color: #999; font-size: 12px; margin-top: 10px">
     字体加载中，若因国内访问不畅长时间未加载成功，
@@ -79,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import tiejiliFont from "../assets/tiejili.ttf";
 
 const canvas = ref<HTMLCanvasElement>();
@@ -101,6 +105,25 @@ const title = ref<string>("2023推TOP100");
 const titleWidth = ref<number>(0);
 const name = ref<string>("填表人：__________");
 const nameWidth = ref<number>(0);
+
+// 标题限制开关
+const titleLimit = ref<boolean>(false);
+watch(titleLimit, (newVal) => {
+  localStorage.setItem("titleLimit", newVal.toString());
+  // 如果禁用了解除标题限制时，标题或填表人为空，则自动补充缺省值
+  if (!newVal) {
+    if (!title.value) {
+      title.value = "2023推TOP100";
+      localStorage.setItem("title", title.value);
+      drawTitle();
+    }
+    if (!name.value) {
+      name.value = "填表人：__________";
+      localStorage.setItem("name", name.value);
+      drawTitle();
+    }
+  }
+});
 
 // 格子的行数和列数
 const rows = ref<number>(10);
@@ -299,50 +322,66 @@ function drawTitle() {
 function clickTitle(x: number, y: number) {
   // 判断当前点击是否在标题部分
   if (x > 32 && x < 32 + titleWidth.value && y > 16 && y < 64) {
-    title.value = (
-      prompt(`请输入新标题`, title.value) || "2023推TOP100"
-    ).trim();
-    // 计算标题可用字数
-    while (
-      getTextWidth(title.value, "bold 48px tiejili") + nameWidth.value >
-      930 - 32 - 32
-    ) {
-      alert(`标题长度超出${getTextWidth(title.value, "bold 48px tiejili") + nameWidth.value - 930 + 32 + 32}，请尝试重新输入或缩短填表人名称`);
+    if (titleLimit.value) {
+      title.value = (
+        prompt(`请输入新标题`, title.value) || ""
+      ).trim();
+      localStorage.setItem("title", title.value);
+      drawTitle();
+    } else {
       title.value = (
         prompt(`请输入新标题`, title.value) || "2023推TOP100"
       ).trim();
+      // 计算标题可用字数
+      while (
+        getTextWidth(title.value, "bold 48px tiejili") + nameWidth.value >
+        930 - 32 - 32
+      ) {
+        alert(`标题长度超出${getTextWidth(title.value, "bold 48px tiejili") + nameWidth.value - 930 + 32 + 32}，请尝试重新输入或缩短填表人名称`);
+        title.value = (
+          prompt(`请输入新标题`, title.value) || "2023推TOP100"
+        ).trim();
+      }
+      localStorage.setItem("title", title.value);
+      drawTitle();
     }
-    localStorage.setItem("title", title.value);
-    drawTitle();
   }
   // 判断当前点击是否在填表人部分
   if (x > 930 - 32 - nameWidth.value && x < 930 - 32 && y > 48 && y < 80) {
-    // 移除标题中的“填表人：__________”和“填表人：”
-    let newName = `填表人：${(
-      prompt(
-        "请输入填表人的名字",
-        name.value.replace("填表人：__________", "").replace("填表人：", "")
-      ) || "__________"
-    ).trim()}`;
-    // 计算填表人可用字数
-    while (
-      getTextWidth(newName, "bold 32px tiejili") + titleWidth.value >
-      930 - 32 - 32 ||
-      getTextWidth(`填表人：__________`, "bold 32px tiejili") +
-      titleWidth.value >
-      930 - 32 - 32
-    ) {
-      alert(`填表人名称长度超出${getTextWidth(newName, "bold 32px tiejili") + titleWidth.value - 930 + 32 + 32}，请尝试重新输入或缩短标题`);
-      newName = `填表人：${(
+    if (titleLimit.value) {
+      name.value = `${(
+        prompt("请输入填表人的名字", name.value) || ""
+      ).trim()}`;
+      localStorage.setItem("name", name.value);
+      drawTitle();
+    } else {
+      // 移除标题中的“填表人：__________”和“填表人：”
+      let newName = `填表人：${(
         prompt(
           "请输入填表人的名字",
           name.value.replace("填表人：__________", "").replace("填表人：", "")
         ) || "__________"
       ).trim()}`;
+      // 计算填表人可用字数
+      while (
+        getTextWidth(newName, "bold 32px tiejili") + titleWidth.value >
+        930 - 32 - 32 ||
+        getTextWidth(`填表人：__________`, "bold 32px tiejili") +
+        titleWidth.value >
+        930 - 32 - 32
+      ) {
+        alert(`填表人名称长度超出${getTextWidth(newName, "bold 32px tiejili") + titleWidth.value - 930 + 32 + 32}，请尝试重新输入或缩短标题`);
+        newName = `填表人：${(
+          prompt(
+            "请输入填表人的名字",
+            name.value.replace("填表人：__________", "").replace("填表人：", "")
+          ) || "__________"
+        ).trim()}`;
+      }
+      name.value = newName;
+      localStorage.setItem("name", name.value);
+      drawTitle();
     }
-    name.value = newName;
-    localStorage.setItem("name", name.value);
-    drawTitle();
   }
 }
 
@@ -463,6 +502,9 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
 
 // 从localStorage中读取数据
 function loadLocalStorage() {
+  if (localStorage.getItem("titleLimit")) {
+    titleLimit.value = localStorage.getItem("titleLimit") === "true";
+  }
   if (localStorage.getItem("rows")) {
     rows.value = Number(localStorage.getItem("rows")!);
     drawRects();
