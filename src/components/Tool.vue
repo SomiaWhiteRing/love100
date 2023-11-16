@@ -148,7 +148,7 @@ function mountEvent() {
     const [x, y] = getMousePosition(e);
     if (y < 100) {
       clickTitle(x, y);
-    } else if (y < (100 + Math.floor(930 / rows.value) * rows.value)) {
+    } else if (y < (100 + Math.floor(920 / rows.value) * rows.value)) {
       // 格子部分
       const [i, j] = getGridIndex(e);
       if (i === -1 || j === -1) return;
@@ -186,8 +186,8 @@ function drawRects() {
   ctx.fillStyle = "#FFF";
   for (let i = 0; i < cols.value; i++) {
     for (let j = 0; j < rows.value; j++) {
-      ctx.strokeRect(10 + Math.floor(930 / cols.value) * i, 110 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 10, Math.floor(930 / rows.value) - 10);
-      ctx.fillRect(11 + Math.floor(930 / cols.value) * i, 111 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 12, Math.floor(930 / rows.value) - 12);
+      ctx.strokeRect(10 + Math.floor(920 / cols.value) * i, 110 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 10, Math.floor(920 / rows.value) - 10);
+      ctx.fillRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
     }
   }
 }
@@ -317,7 +317,7 @@ async function afterCrop() {
 function clearCrop() {
   const [i, j] = [cropCoord.value!.x, cropCoord.value!.y];
   const ctx = canvas.value!.getContext("2d")!;
-  ctx.clearRect(11 + Math.floor(930 / cols.value) * i, 111 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 12, Math.floor(930 / rows.value) - 12);
+  ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
   images[i][j] = "";
   localStorage.setItem("images", JSON.stringify(images));
   cropperDialog.value!.close();
@@ -342,19 +342,19 @@ function getMousePosition(e: MouseEvent) {
 function getGridIndex(e: MouseEvent) {
   const [x, y] = getMousePosition(e);
   // 如果鼠标不在格子部分，返回[-1, -1]
-  if (x % Math.floor(930 / cols.value) < 9 || (y - 100) % Math.floor(930 / rows.value) < 9 || y < 100 || y > (100 + Math.floor(930 / rows.value) * rows.value)) return [-1, -1];
-  const i = Math.floor((x - 11) / Math.floor(930 / cols.value));
-  const j = Math.floor((y - 100) / Math.floor(930 / rows.value));
+  if (x % Math.floor(920 / cols.value) < 9 || (y - 100) % Math.floor(920 / rows.value) < 9 || y < 100 || y > (100 + Math.floor(920 / rows.value) * rows.value)) return [-1, -1];
+  const i = Math.floor((x - 11) / Math.floor(920 / cols.value));
+  const j = Math.floor((y - 100) / Math.floor(920 / rows.value));
   return [i, j];
 }
 
 // 在指定格子上绘制图片
 function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
-  ctx.clearRect(11 + Math.floor(930 / cols.value) * i, 111 + Math.floor(930 / rows.value) * j, Math.floor(930 / cols.value) - 12, Math.floor(930 / rows.value) - 12);
+  ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
   // 绘制图片时若比例与格子不同则自动裁切
-  const gridWidth = Math.floor(930 / cols.value) - 12;
-  const gridHeight = Math.floor(930 / rows.value) - 12;
+  const gridWidth = Math.floor(920 / cols.value) - 12;
+  const gridHeight = Math.floor(920 / rows.value) - 12;
   const imgWidth = img.width;
   const imgHeight = img.height;
   const imgRatio = imgWidth / imgHeight;
@@ -363,13 +363,13 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   if (imgRatio > gridRatio) {
     drawWidth = gridWidth;
     drawHeight = drawWidth / imgRatio;
-    drawX = 11 + Math.floor(930 / cols.value) * i;
-    drawY = 111 + Math.floor(930 / rows.value) * j + (gridHeight - drawHeight) / 2;
+    drawX = 11 + Math.floor(920 / cols.value) * i;
+    drawY = 111 + Math.floor(920 / rows.value) * j + (gridHeight - drawHeight) / 2;
   } else {
     drawHeight = gridHeight;
     drawWidth = drawHeight * imgRatio;
-    drawX = 11 + Math.floor(930 / cols.value) * i + (gridWidth - drawWidth) / 2;
-    drawY = 111 + Math.floor(930 / rows.value) * j;
+    drawX = 11 + Math.floor(920 / cols.value) * i + (gridWidth - drawWidth) / 2;
+    drawY = 111 + Math.floor(920 / rows.value) * j;
   }
   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   // 将图片暂存在数组中
@@ -508,7 +508,7 @@ function submitResize() {
   // 如果比例发生了变化且有已经填好的图片，则弹窗提醒用户图片会变形
   if (resizeRows.value / resizeCols.value !== rows.value / cols.value &&
     localStorage.getItem("images")?.includes("data:image")) {
-    if (!confirm("调整后的格子比例不同，会导致已填入的图片变形，是否继续？")) return;
+    if (!confirm("调整后的格子比例不同，会导致已填入的图片无法占满格子，是否继续？")) return;
   }
   rows.value = resizeRows.value;
   cols.value = resizeCols.value;
