@@ -65,7 +65,7 @@
         </div>
       </div>
       <div style="display: flex; gap: 16px; justify-content: flex-end">
-        <button v-if="!DDMode" style="background: #f56c6c" @click="DDMode = true; resizeCols = 20; resizeRows = 20">
+        <button v-if="!DDMode" style="background: #f56c6c" @click="resizeCols = 20; resizeRows = 20; DDMode = true; ">
           我的意思是，格子不够用了
         </button>
         <button v-if="DDMode" style="background: #f5a623"
