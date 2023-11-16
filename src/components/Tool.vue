@@ -17,12 +17,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-                  padding: 16px;
-                  display: flex;
-                  flex-direction: column;
-                  gap: 16px;
-                  position: relative;
-                ">
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    position: relative;
+                  ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -38,12 +38,12 @@
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
     <div style="
-                  padding: 16px;
-                  display: flex;
-                  flex-direction: column;
-                  gap: 16px;
-                  position: relative;
-                ">
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    position: relative;
+                  ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
         ✖
       </div>
@@ -402,6 +402,16 @@ function loadLocalStorage() {
   }
   if (localStorage.getItem("images")) {
     images = JSON.parse(localStorage.getItem("images")!);
+    // 旧版本兼容：如果images不是20*20，则扩充
+    if (images.length < 20) {
+      const newImages = new Array(20).fill(0).map(() => new Array(20).fill(""));
+      for (let i = 0; i < images.length; i++) {
+        for (let j = 0; j < images[i].length; j++) {
+          newImages[i][j] = images[i][j];
+        }
+      }
+      images = newImages;
+    }
     for (let i = 0; i < rows.value; i++) {
       for (let j = 0; j < cols.value; j++) {
         if (images[i] && images[i][j]) {
