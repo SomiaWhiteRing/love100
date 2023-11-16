@@ -28,7 +28,7 @@
       </div>
       <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">编辑图片</span>
       <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed centerBox
-        :fixedNumber="[920 / cols - 12, 920 / rows - 12]" />
+        :fixedNumber="[920 / cols - 12, 920 / rows - 12]" outputType="png" infoTrue :enlarge="5" />
       <div style="display: flex; gap: 16px; justify-content: flex-end">
         <button style="background: #f56c6c" @click="clearCrop()">清空</button>
         <button @click="afterCrop">确定</button>
@@ -502,7 +502,7 @@ function download() {
     downloadButton.innerText = "下载";
   }, 2000);
   const link = document.createElement("a");
-  link.download = "2023推TOP100.png";
+  link.download = `${title.value}.png`;
   link.href = canvas.value!.toDataURL();
   link.click();
 }
