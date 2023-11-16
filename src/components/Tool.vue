@@ -27,10 +27,10 @@
         ✖
       </div>
       <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">编辑图片</span>
-      <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed centerBox
+      <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed
         :fixedNumber="[920 / cols - 12, 920 / rows - 12]" outputType="png" infoTrue :enlarge="5" />
       <div style="display: flex; gap: 16px; justify-content: flex-end">
-        <button style="background: #f56c6c" @click="clearCrop()">清空</button>
+        <button style="background: #f56c6c" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
         <button @click="afterCrop">确定</button>
       </div>
     </div>
@@ -65,7 +65,7 @@
         </div>
       </div>
       <div style="display: flex; gap: 16px; justify-content: flex-end">
-        <button v-if="!DDMode" style="background: #f56c6c" @click="resizeCols = 20; resizeRows = 20; DDMode = true; ">
+        <button v-if="!DDMode" style="background: #f56c6c" @click="resizeCols = 20; resizeRows = 20; DDMode = true;">
           我的意思是，格子不够用了
         </button>
         <button v-if="DDMode" style="background: #f5a623"
@@ -159,33 +159,105 @@ function mountEvent() {
     const [x, y] = getMousePosition(e);
     if (y < 100) {
       clickTitle(x, y);
-    } else if (y < (100 + Math.floor(920 / rows.value) * rows.value)) {
-      // 格子部分
-      const [i, j] = getGridIndex(e);
-      if (i === -1 || j === -1) return;
-      // 判断格子内是否有图片，若有则调用图片编辑
-      if (images[i] && images[i][j]) {
-        onCrop(i, j);
-      } else {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.onchange = () => {
-          const file = input.files![0];
-          const reader = new FileReader();
-          reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-              drawImageOnGrid(img, i, j);
-            };
-            img.src = reader.result as string;
-          };
-          reader.readAsDataURL(file);
-        };
-        input.click();
-      }
     }
   });
+
+  // 在图像内拖拽可移动图片
+  canvas.value!.addEventListener("mousedown", (e) => {
+    const [i, j] = getGridIndex(e);
+    if (i === -1 || j === -1) return;
+    const img = new Image();
+    if (images[i] && images[i][j]) {
+      img.onload = () => {
+        const ctx = canvas.value!.getContext("2d")!;
+        const gridWidth = Math.floor(920 / cols.value) - 12;
+        const gridHeight = Math.floor(920 / rows.value) - 12;
+        const imgWidth = img.width;
+        const imgHeight = img.height;
+        const imgRatio = imgWidth / imgHeight;
+        const gridRatio = gridWidth / gridHeight;
+        let drawWidth: number, drawHeight: number, drawX: number, drawY: number;
+        if (imgRatio > gridRatio) {
+          drawWidth = gridWidth;
+          drawHeight = drawWidth / imgRatio;
+          drawX = 11 + Math.floor(920 / cols.value) * i;
+          drawY = 111 + Math.floor(920 / rows.value) * j + (gridHeight - drawHeight) / 2;
+        } else {
+          drawHeight = gridHeight;
+          drawWidth = drawHeight * imgRatio;
+          drawX = 11 + Math.floor(920 / cols.value) * i + (gridWidth - drawWidth) / 2;
+          drawY = 111 + Math.floor(920 / rows.value) * j;
+        }
+        ctx.clearRect(drawX, drawY, drawWidth, drawHeight);
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+        images[i][j] = img.src;
+        localStorage.setItem("images", JSON.stringify(images));
+      };
+      img.src = images[i][j];
+    }
+    const up = (e: MouseEvent) => {
+      const [_i, _j] = getGridIndex(e);
+      if (_i === -1 || _j === -1) return;
+      if (_i !== i || _j !== j) {
+        if (images[i] && images[i][j]) {
+          if (images[_i] && images[_i][_j]) {
+            const temp = JSON.parse(JSON.stringify(images[_i][_j]));
+            images[_i][_j] = JSON.parse(JSON.stringify(images[i][j]));
+            images[i][j] = temp;
+            localStorage.setItem("images", JSON.stringify(images));
+            // 清空并重绘这两个格子
+            const img = new Image();
+            img.onload = () => {
+              clearCrop(_i, _j);
+              drawImageOnGrid(img, _i, _j);
+            };
+            img.src = images[_i][_j];
+            const img2 = new Image();
+            img2.onload = () => {
+              clearCrop(i, j);
+              drawImageOnGrid(img2, i, j);
+            };
+            img2.src = images[i][j];
+          } else {
+            images[_i][_j] = images[i][j];
+            images[i][j] = "";
+            localStorage.setItem("images", JSON.stringify(images));
+            const img = new Image();
+            img.onload = () => {
+              drawImageOnGrid(img, _i, _j);
+              clearCrop(i, j);
+            };
+            img.src = images[_i][_j];
+          }
+        }
+      } else {
+        // 判断格子内是否有图片，若有则调用图片编辑
+        if (images[_i] && images[_i][_j]) {
+          onCrop(_i, _j);
+        } else {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*";
+          input.onchange = () => {
+            const file = input.files![0];
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                drawImageOnGrid(img, _i, _j);
+              };
+              img.src = reader.result as string;
+            };
+            reader.readAsDataURL(file);
+          };
+          input.click();
+        }
+      }
+      canvas.value!.removeEventListener("mouseup", up);
+    };
+    canvas.value!.addEventListener("mouseup", up);
+  });
+
 
 }
 
@@ -327,8 +399,7 @@ async function afterCrop() {
 }
 
 // 清空指定格子
-function clearCrop() {
-  const [i, j] = [cropCoord.value!.x, cropCoord.value!.y];
+function clearCrop(i, j) {
   const ctx = canvas.value!.getContext("2d")!;
   ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
   images[i][j] = "";
@@ -412,8 +483,8 @@ function loadLocalStorage() {
       }
       images = newImages;
     }
-    for (let i = 0; i < rows.value; i++) {
-      for (let j = 0; j < cols.value; j++) {
+    for (let i = 0; i < cols.value; i++) {
+      for (let j = 0; j < rows.value; j++) {
         if (images[i] && images[i][j]) {
           // 根据images[i][j]创建一个Image对象
           const img = new Image();
