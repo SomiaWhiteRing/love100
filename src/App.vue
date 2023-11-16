@@ -8,7 +8,7 @@ import { VGithubIcon } from 'v-github-icon';
     推荐在PC端使用。鼠标左键点击空格子或将图片拖入格子填表，再次点击编辑格子内图片。
   </div>
   <div>标题和填表人可点击修改。</div>
-  <div><span style="color: red;">New!</span> 已追加表内拖拽功能，可以自由交换已填入格子的位置！</div>
+  <div><span style="color: red;">New!</span> 追加表内拖拽功能，可以自由交换已填入格子的位置！</div>
   <div><span style="color: red;">New!</span> 追加解除标题限制开关，启用后标题和填表人字样可以更自由地填写。</div>
   <div>（若清空无法修改，关闭解除限制开关即可还原初始值）</div>
   <Tool />
