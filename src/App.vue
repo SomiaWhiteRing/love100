@@ -20,6 +20,10 @@ import { VGithubIcon } from 'v-github-icon';
     <a href="https://weibo.com/6571509464" target="_blank" style="color: #000">@苍旻白轮</a>
     <span>love100.shatranj.space</span>
     <a href="https://github.com/SomiaWhiteRing/love100" target="_blank" style="color: #000">GitHub</a>
+    <span>都看到这里了点个star呗求你了</span>
+    <iframe src="https://ghbtns.com/github-btn.html?user=SomiaWhiteRing&repo=love100&type=star&count=true" frameborder="0"
+      scrolling="0" width="50" height="20" title="GitHub">
+    </iframe>
   </span>
   <VGithubIcon position="top-left" url="https://github.com/SomiaWhiteRing/love100" />
 </template>

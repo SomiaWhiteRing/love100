@@ -17,12 +17,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      position: relative;
-    ">
+                  padding: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                  position: relative;
+                ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -38,24 +38,27 @@
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
     <div style="
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      position: relative;
-    ">
+                  padding: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                  position: relative;
+                ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
         ✖
       </div>
       <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">调整格子数量</span>
       <div style="display: flex; align-items: center">
         <div style="width: 50px;" />
-        <input type="range" min="1" max="10" v-model="resizeCols" style="width: 400px;">
+        <input type="range" min="1" :max="
+          DDMode ? 20 : 10
+        " v-model="resizeCols" style="width: 400px;">
       </div>
       <div style="display: flex; align-items: center">
         <div style="display: flex; flex-direction: column; align-items: center;width: 50px;">
-          <input type="range" min="1" max="10" v-model="resizeRows"
-            style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
+          <input type="range" min="1" :max="
+            DDMode ? 20 : 10
+          " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
         </div>
         <div style="width: 400px; height: 400px; display: flex; flex-direction: column; gap: 2px;">
           <div v-for="i in Number(resizeRows)" :key="i" style="display: flex; flex: 1; gap: 2px;">
@@ -64,6 +67,13 @@
         </div>
       </div>
       <div style="display: flex; gap: 16px; justify-content: flex-end">
+        <button v-if="!DDMode" style="background: #f56c6c" @click="DDMode = true">
+          我的意思是，格子不够用了
+        </button>
+        <button v-if="DDMode" style="background: #f5a623"
+          @click="DDMode = false; resizeRows = (resizeRows > 10 ? 10 : resizeRows); resizeCols = (resizeCols > 10 ? 10 : resizeCols)">
+          算了算了
+        </button>
         <button @click="submitResize">确定</button>
       </div>
     </div>
@@ -79,8 +89,8 @@ const canvas = ref<HTMLCanvasElement>();
 const loading = ref<number>(0);
 const loadingInterval = ref<any>();
 
-// 用一个10*10的数组暂存图片
-let images = new Array(10).fill(0).map(() => new Array(10).fill(""));
+// 用一个20*20的数组暂存图片
+let images = new Array(20).fill(0).map(() => new Array(20).fill(""));
 
 // 图片编辑相关
 const cropperDialog = ref<HTMLDialogElement>();
@@ -102,6 +112,9 @@ const cols = ref<number>(10);
 const resizeDialog = ref<HTMLDialogElement>();
 const resizeRows = ref<number>(10);
 const resizeCols = ref<number>(10);
+
+// DDPower!
+const DDMode = ref<boolean>(false);
 
 onMounted(async () => {
   loadingInterval.value = setInterval(() => {
@@ -153,7 +166,7 @@ function mountEvent() {
       const [i, j] = getGridIndex(e);
       if (i === -1 || j === -1) return;
       // 判断格子内是否有图片，若有则调用图片编辑
-      if (images[i][j]) {
+      if (images[i] && images[i][j]) {
         onCrop(i, j);
       } else {
         const input = document.createElement("input");
@@ -359,8 +372,6 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const imgHeight = img.height;
   const imgRatio = imgWidth / imgHeight;
   const gridRatio = gridWidth / gridHeight;
-  console.log(imgHeight, imgWidth, imgRatio)
-  console.log(gridHeight, gridWidth, gridRatio)
   let drawWidth, drawHeight, drawX, drawY;
   if (imgRatio > gridRatio) {
     drawWidth = gridWidth;
@@ -393,7 +404,7 @@ function loadLocalStorage() {
     images = JSON.parse(localStorage.getItem("images")!);
     for (let i = 0; i < rows.value; i++) {
       for (let j = 0; j < cols.value; j++) {
-        if (images[i][j]) {
+        if (images[i] && images[i][j]) {
           // 根据images[i][j]创建一个Image对象
           const img = new Image();
           img.src = images[i][j];
@@ -466,7 +477,7 @@ function restore() {
 // 清空当前数据
 function clear() {
   localStorage.removeItem("images");
-  images = new Array(10).fill(0).map(() => new Array(10).fill(""));
+  images = new Array(20).fill(0).map(() => new Array(20).fill(""));
   drawRects();
   const clearButton = document.getElementById("clear")!;
   clearButton.innerText = "清空✅";
