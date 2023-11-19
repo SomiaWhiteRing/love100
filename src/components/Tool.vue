@@ -21,12 +21,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div style="
-                                                          padding: 16px;
-                                                          display: flex;
-                                                          flex-direction: column;
-                                                          gap: 16px;
-                                                          position: relative;
-                                                        ">
+                                                                padding: 16px;
+                                                                display: flex;
+                                                                flex-direction: column;
+                                                                gap: 16px;
+                                                                position: relative;
+                                                              ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
         ✖
       </div>
@@ -42,12 +42,12 @@
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
     <div style="
-                                                          padding: 16px;
-                                                          display: flex;
-                                                          flex-direction: column;
-                                                          gap: 16px;
-                                                          position: relative;
-                                                        ">
+                                                                padding: 16px;
+                                                                display: flex;
+                                                                flex-direction: column;
+                                                                gap: 16px;
+                                                                position: relative;
+                                                              ">
       <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
         ✖
       </div>
@@ -141,8 +141,8 @@ const DDMode = ref<boolean>(false);
 // 用indexDB来缓存图片
 interface Image {
   axis: string;
-  src: string;
-  sourceSrc: string;
+  src?: string;
+  sourceSrc?: string;
 }
 
 class Love100DB extends Dexie {
@@ -150,7 +150,7 @@ class Love100DB extends Dexie {
   constructor() {
     super("love100");
     this.version(1).stores({
-      images: '&axis, src, sourceSrc'
+      images: '&axis'
     });
   }
 }
@@ -158,7 +158,7 @@ class Love100DB extends Dexie {
 const db = new Love100DB();
 
 db.version(1).stores({
-  images: '&axis, src, sourceSrc'
+  images: '&axis'
 });
 
 onMounted(async () => {
@@ -589,7 +589,7 @@ async function loadLocalStorage() {
       e.forEach((item) => {
         const [i, j] = item.axis.split(",").map((e) => Number(e));
         const img = new Image();
-        img.src = item.src;
+        img.src = item.src!;
         img.onload = () => {
           drawImageOnGrid(img, i, j);
         };
