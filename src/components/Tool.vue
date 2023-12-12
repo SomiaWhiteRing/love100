@@ -1,66 +1,48 @@
 <template>
-  <div style="display: inline-flex; gap: 36px">
+  <div class="inline-flex gap-9 justify-center items-center">
     <!-- 写四个按钮，分别是存储，还原，清空，下载 -->
-    <button id="save" @click="save">导出</button>
-    <button id="restore" @click="restore">导入</button>
-    <button id="clear" @click="clear">清空</button>
-    <button id="download" @click="download">下载</button>
-    <button style="background: #67c23a" @click="showResizeDialog()">格子太多了！</button>
-    <span style="line-height: 32px; display: inline-flex; gap: 4px; align-items: center">
-      <input type="checkbox" v-model="titleLimit" />
-      <label>解除标题限制</label>
-    </span>
-  </div>
-  <div v-if="loading > 10" style="color: #999; font-size: 12px; margin-top: 10px">
-    字体加载中，若因国内访问不畅长时间未加载成功，
-    <button style="background: #f56c6c" @click="mountEvent">
-      请点此
-    </button>
+    <button class="btn btn-primary btn-sm" id="save" @click="save">导出</button>
+    <button class="btn btn-primary btn-sm" id="restore" @click="restore">导入</button>
+    <button class="btn btn-primary btn-sm" id="clear" @click="clear">清空</button>
+    <button class="btn btn-primary btn-sm" id="download" @click="download">下载</button>
+    <button class="btn btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
+
+    <label class="label cursor-pointer">
+      <input class="checkbox" type="checkbox" v-model="titleLimit" />
+      <span class="ml-1">解除标题限制</span>
+    </label>
   </div>
   <canvas ref="canvas" width="930" height="1060" />
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
-    <div style="
-                                                                padding: 16px;
-                                                                display: flex;
-                                                                flex-direction: column;
-                                                                gap: 16px;
-                                                                position: relative;
-                                                              ">
-      <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="cropperDialog!.close()">
+    <div class="p-8 flex flex-col gap-4 relative overflow-hidden">
+      <button class="absolute btn btn-ghost top-0 right-0" @click="cropperDialog!.close()">
         ✖
-      </div>
-      <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">编辑图片</span>
+      </button>
+      <span class="text-3xl mb-4 font-bold">编辑图片</span>
       <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed
-        :fixedNumber="[920 / cols - 12, 920 / rows - 12]" outputType="png" infoTrue :enlarge="5" />
-      <div style="display: flex; gap: 16px; justify-content: flex-end">
-        <button style="background: #f56c6c" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
-        <button @click="afterCrop">确定</button>
+        :fixedNumber="[920 / cols - 12, 920 / rows - 12]" outputType="png" infoTrue
+        :enlarge="Math.max(Math.ceil(cropCoord.width / 400), Math.ceil(cropCoord.height / 400))" />
+      <div class="flex gap-4 justify-end mt-4">
+        <button class="btn btn-sm btn-warning" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
+        <button class="btn btn-sm btn-primary" @click="afterCrop">确定</button>
       </div>
     </div>
   </dialog>
   <!-- 再写一个弹窗，内含横竖两个有间隔的滑条调整格子数量，中间有一个根据当前长宽演示格子形状的示意图 -->
   <dialog ref="resizeDialog">
-    <div style="
-                                                                padding: 16px;
-                                                                display: flex;
-                                                                flex-direction: column;
-                                                                gap: 16px;
-                                                                position: relative;
-                                                              ">
-      <div style="position: absolute; top: 0; right: 0; cursor: pointer" @click="resizeDialog!.close()">
-        ✖
-      </div>
-      <span style="font-size: 24px; font-weight: bold; margin-bottom: 16px">调整格子数量</span>
+    <div class="p-8 flex flex-col gap-4 relative overflow-hidden">
+      <div class="absolute btn btn-ghost top-0 right-0" @click="resizeDialog!.close()">✖</div>
+      <span class="text-3xl mb-4 font-bold">调整格子数量</span>
       <div style="display: flex; align-items: center">
         <div style="width: 50px;" />
         <input type="range" min="1" :max="DDMode ? 20 : 10
-        " v-model="resizeCols" style="width: 400px;">
+          " v-model="resizeCols" style="width: 400px;">
       </div>
       <div style="display: flex; align-items: center">
         <div style="display: flex; flex-direction: column; align-items: center;width: 50px;">
           <input type="range" min="1" :max="DDMode ? 20 : 10
-          " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
+            " v-model="resizeRows" style="width: 400px; margin: 16px 0; transform: rotate(90deg)">
         </div>
         <div style="width: 400px; height: 400px; display: flex; flex-direction: column; gap: 2px;">
           <div v-for="i in Number(resizeRows)" :key="i" style="display: flex; flex: 1; gap: 2px;">
@@ -68,15 +50,15 @@
           </div>
         </div>
       </div>
-      <div style="display: flex; gap: 16px; justify-content: flex-end">
-        <button v-if="!DDMode" style="background: #f56c6c" @click="resizeCols = 20; resizeRows = 20; DDMode = true;">
+      <div class="flex gap-4 justify-end mt-4">
+        <button v-if="!DDMode" class="btn btn-sm btn-warning" @click="resizeCols = 20; resizeRows = 20; DDMode = true;">
           我的意思是，格子不够用了
         </button>
-        <button v-if="DDMode" style="background: #f5a623"
+        <button v-if="DDMode" class="btn btn-sm btn-success"
           @click="DDMode = false; resizeRows = (resizeRows > 10 ? 10 : resizeRows); resizeCols = (resizeCols > 10 ? 10 : resizeCols)">
           算了算了
         </button>
-        <button @click="submitResize">确定</button>
+        <button class="btn btn-sm btn-primary" @click="submitResize">确定</button>
       </div>
     </div>
   </dialog>
@@ -84,13 +66,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
-import tiejiliFont from "../assets/tiejili.ttf";
 import Dexie, { type Table } from "dexie";
 
 const canvas = ref<HTMLCanvasElement>();
-
-const loading = ref<number>(0);
-const loadingInterval = ref<any>();
 
 // 用一个20*20的数组暂存图片
 let images = new Array(20).fill(0).map(() => new Array(20).fill(""));
@@ -99,7 +77,12 @@ let images = new Array(20).fill(0).map(() => new Array(20).fill(""));
 const cropperDialog = ref<HTMLDialogElement>();
 const cropperRef = ref<any>();
 const cropperSrc = ref<string>();
-const cropCoord = ref<{ x: number; y: number }>();
+const cropCoord = ref<{ x: number; y: number, width: number; height: number }>({
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0
+});
 
 // 标题和填表人
 const title = ref<string>("2023推TOP100");
@@ -161,24 +144,16 @@ db.version(1).stores({
   images: '&axis'
 });
 
-onMounted(async () => {
-  loadingInterval.value = setInterval(() => {
-    loading.value += 1;
-  }, 1000);
-  const tiejili = new FontFace("tiejili", `url(${tiejiliFont})`);
-  await tiejili.load();
+onMounted(() => {
   mountEvent()
 });
 
-// 网络环境不畅时，跳过字体加载强制绘制页面
 function mountEvent() {
-  clearInterval(loadingInterval.value);
-  loading.value = 0;
   drawRects();
   drawTitle();
   drawCopyRight();
 
-  loadLocalStorage();
+  loadLocalData();
 
   // 激发拖拽能力
   canvas.value!.addEventListener("dragover", (e) => {
@@ -312,7 +287,6 @@ function mountEvent() {
     };
     canvas.value!.addEventListener("mouseup", up);
   });
-
 
 }
 
@@ -451,7 +425,6 @@ function drawCopyRight() {
 // 调用图片编辑组件
 function onCrop(x: number, y: number) {
   if (!images[x][y]) return;
-  // cropperSrc.value = images[x][y];
   // 获取sourceSrc
   db.images.where("axis").equals(`${x},${y}`).first((e) => {
     if (e) {
@@ -459,9 +432,21 @@ function onCrop(x: number, y: number) {
     } else {
       cropperSrc.value = images[x][y];
     }
+  }).then(() => {
+    // 获取cropperSrc的宽高
+    const img = new Image();
+    img.src = cropperSrc.value || '';
+    img.onload = () => {
+      cropCoord.value = {
+        x,
+        y,
+        width: img.width,
+        height: img.height
+      };
+      console.log(cropCoord.value);
+      cropperDialog.value!.showModal();
+    };
   });
-  cropCoord.value = { x, y };
-  cropperDialog.value!.showModal();
 }
 
 // 图片编辑完成后的回调
@@ -544,8 +529,8 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   });
 }
 
-// 从localStorage中读取数据
-async function loadLocalStorage() {
+// 读取本地存储的数据
+async function loadLocalData() {
   return new Promise<void>(async (resolve) => {
     if (localStorage.getItem("titleLimit")) {
       titleLimit.value = localStorage.getItem("titleLimit") === "true";
@@ -557,33 +542,6 @@ async function loadLocalStorage() {
     if (localStorage.getItem("cols")) {
       cols.value = Number(localStorage.getItem("cols")!);
       drawRects();
-    }
-    if (localStorage.getItem("images")) {
-      images = JSON.parse(localStorage.getItem("images")!);
-      // 旧版本兼容：如果images不是20*20，则扩充
-      if (images.length < 20) {
-        const newImages = new Array(20).fill(0).map(() => new Array(20).fill(""));
-        for (let i = 0; i < images.length; i++) {
-          for (let j = 0; j < images[i].length; j++) {
-            newImages[i][j] = images[i][j];
-          }
-        }
-        images = newImages;
-      }
-      for (let i = 0; i < cols.value; i++) {
-        for (let j = 0; j < rows.value; j++) {
-          if (images[i] && images[i][j]) {
-            // 根据images[i][j]创建一个Image对象
-            const img = new Image();
-            img.src = images[i][j];
-            img.onload = () => {
-              drawImageOnGrid(img, i, j);
-            };
-            await db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
-          }
-        }
-      }
-      localStorage.removeItem("images");
     }
     await db.images.toArray().then((e) => {
       e.forEach((item) => {
@@ -611,7 +569,6 @@ async function loadLocalStorage() {
 async function save() {
   const saveButton = document.getElementById("save")!;
   saveButton.innerText = "导出中...";
-  saveButton.style.backgroundColor = "#f56c6c";
   /** 改为组成json并下载 */
   const json = {
     images: '',
@@ -629,7 +586,6 @@ async function save() {
   link.href = URL.createObjectURL(new Blob([JSON.stringify(json)]));
   link.click();
   saveButton.innerText = "导出✅";
-  saveButton.style.backgroundColor = "#409eff";
   setTimeout(() => {
     saveButton.innerText = "导出";
   }, 2000);
@@ -647,7 +603,6 @@ function restore() {
     const file = input.files![0];
     const reader = new FileReader();
     restoreButton.innerText = "导入中...";
-    restoreButton.style.backgroundColor = "#f56c6c";
     reader.onload = async () => {
       const json = JSON.parse(reader.result as string);
       if (json.images) {
@@ -675,9 +630,8 @@ function restore() {
       if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
       if (json.rows) localStorage.setItem("rows", json.rows); else localStorage.removeItem("rows");
       if (json.cols) localStorage.setItem("cols", json.cols); else localStorage.removeItem("cols");
-      await loadLocalStorage();
+      await loadLocalData();
       restoreButton.innerText = "导入✅";
-      restoreButton.style.backgroundColor = "#409eff";
       setTimeout(() => {
         restoreButton.innerText = "导入";
       }, 2000);
@@ -689,7 +643,6 @@ function restore() {
 
 // 清空当前数据
 function clear() {
-  localStorage.removeItem("images");
   db.images.clear();
   images = new Array(20).fill(0).map(() => new Array(20).fill(""));
   drawRects();
@@ -740,34 +693,7 @@ function submitResize() {
   localStorage.setItem("cols", cols.value.toString());
   resizeDialog.value!.close();
   drawRects();
-  loadLocalStorage();
+  loadLocalData();
 }
 
 </script>
-
-<style>
-button {
-  background-color: #409eff;
-  border: none;
-  color: white;
-  padding: 0 16px;
-  height: 32px;
-  line-height: 32px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-  margin: 4px 2px;
-  cursor: pointer;
-  border-radius: 10px;
-}
-
-button:hover {
-  opacity: 0.8;
-}
-
-button:focus {
-  outline: 0 !important;
-}
-</style>
-
