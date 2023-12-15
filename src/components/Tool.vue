@@ -173,7 +173,7 @@ function mountEvent() {
     reader.readAsDataURL(file);
   });
 
-  // 配置点击事件，点击可选择图片上传
+  // 配置标题栏点击事件
   canvas.value!.addEventListener("click", (e) => {
     const [x, y] = getMousePosition(e);
     if (y < 100) {
@@ -181,12 +181,16 @@ function mountEvent() {
     }
   });
 
-  // 在图像内拖拽可移动图片
+  // 配置图块部分的点击与拖拽事件
   canvas.value!.addEventListener("mousedown", async (e) => {
     const [i, j] = getGridIndex(e);
     if (i === -1 || j === -1) return;
+
     const img = new Image();
-    if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
+    const img_ = await db.images.where("axis").equals(`${i},${j}`).first()!;
+    img.src = img_?.src || '';
+
+    if (img.src) {
       img.onload = () => {
         const ctx = canvas.value!.getContext("2d")!;
         const gridWidth = Math.floor(920 / cols.value) - 12;
@@ -196,6 +200,7 @@ function mountEvent() {
         const imgRatio = imgWidth / imgHeight;
         const gridRatio = gridWidth / gridHeight;
         let drawWidth: number, drawHeight: number, drawX: number, drawY: number;
+
         if (imgRatio > gridRatio) {
           drawWidth = gridWidth;
           drawHeight = drawWidth / imgRatio;
@@ -207,56 +212,57 @@ function mountEvent() {
           drawX = 11 + Math.floor(920 / cols.value) * i + (gridWidth - drawWidth) / 2;
           drawY = 111 + Math.floor(920 / rows.value) * j;
         }
+
         ctx.clearRect(drawX, drawY, drawWidth, drawHeight);
         ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
         db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
           if (e === 0) {
             db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
           }
         });
       };
-      // img.src = images[i][j];
-      // @ts-ignore
-      img.src = await db.images.where("axis").equals(`${i},${j}`).first()!.src!;
     }
+
     const up = async (e: MouseEvent) => {
       const [_i, _j] = getGridIndex(e);
       if (_i === -1 || _j === -1) return;
+
       if (_i !== i || _j !== j) {
-        if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
-          if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
-            db.images.where("axis").equals(`${_i},${_j}`).modify({ axis: `temp` });
-            db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
-            db.images.where("axis").equals(`temp`).modify({ axis: `${i},${j}` });
-            // 清空并重绘这两个格子
-            const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
-            const img2_ = await db.images.where("axis").equals(`${i},${j}`).first()!;
-            const img = new Image();
-            const img2 = new Image();
-            img.src = img_?.src || '';
-            img2.src = img2_?.src || '';
-            img.onload = () => {
-              clearCrop(_i, _j);
-              drawImageOnGrid(img, _i, _j);
-            };
-            img2.onload = () => {
-              clearCrop(i, j);
-              drawImageOnGrid(img2, i, j);
-            };
-          } else {
-            db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
-            const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
-            const img = new Image();
-            img.src = img_?.src || '';
-            console.log(img_);
-            img.onload = () => {
-              clearCrop(i, j);
-              drawImageOnGrid(img, _i, _j);
-            };
-          }
+        if (await db.images.where("axis").equals(`${i},${j}`).count() > 0 && await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
+          db.images.where("axis").equals(`${_i},${_j}`).modify({ axis: `temp` });
+          db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
+          db.images.where("axis").equals(`temp`).modify({ axis: `${i},${j}` });
+
+          const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
+          const img2_ = await db.images.where("axis").equals(`${i},${j}`).first()!;
+          const img = new Image();
+          const img2 = new Image();
+          img.src = img_?.src || '';
+          img2.src = img2_?.src || '';
+
+          img.onload = () => {
+            clearCrop(_i, _j);
+            drawImageOnGrid(img, _i, _j);
+          };
+
+          img2.onload = () => {
+            clearCrop(i, j);
+            drawImageOnGrid(img2, i, j);
+          };
+        } else if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
+          db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
+
+          const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
+          const img = new Image();
+          img.src = img_?.src || '';
+
+          img.onload = () => {
+            clearCrop(i, j);
+            drawImageOnGrid(img, _i, _j);
+          };
         }
       } else {
-        // 判断格子内是否有图片，若有则调用图片编辑
         if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
           onCrop(_i, _j);
         } else {
@@ -270,7 +276,6 @@ function mountEvent() {
               const img = new Image();
               img.onload = () => {
                 drawImageOnGrid(img, _i, _j);
-                // 图片上传时存入数据库
                 db.images.put({ axis: `${_i},${_j}`, src: img.src, sourceSrc: img.src });
               };
               img.src = reader.result as string;
@@ -280,8 +285,10 @@ function mountEvent() {
           input.click();
         }
       }
+
       canvas.value!.removeEventListener("mouseup", up);
     };
+
     canvas.value!.addEventListener("mouseup", up);
   });
 
