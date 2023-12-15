@@ -8,7 +8,7 @@
     <button class="btn btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
 
     <label class="label cursor-pointer">
-      <input class="checkbox" type="checkbox" v-model="titleLimit" />
+      <input class="toggle" type="checkbox" v-model="titleLimit" :checked="titleLimit" />
       <span class="ml-1">解除标题限制</span>
     </label>
   </div>
