@@ -70,9 +70,6 @@ import Dexie, { type Table } from "dexie";
 
 const canvas = ref<HTMLCanvasElement>();
 
-// 用一个20*20的数组暂存图片
-let images = new Array(20).fill(0).map(() => new Array(20).fill(""));
-
 // 图片编辑相关
 const cropperDialog = ref<HTMLDialogElement>();
 const cropperRef = ref<any>();
@@ -185,11 +182,11 @@ function mountEvent() {
   });
 
   // 在图像内拖拽可移动图片
-  canvas.value!.addEventListener("mousedown", (e) => {
+  canvas.value!.addEventListener("mousedown", async (e) => {
     const [i, j] = getGridIndex(e);
     if (i === -1 || j === -1) return;
     const img = new Image();
-    if (images[i] && images[i][j]) {
+    if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
       img.onload = () => {
         const ctx = canvas.value!.getContext("2d")!;
         const gridWidth = Math.floor(920 / cols.value) - 12;
@@ -212,55 +209,55 @@ function mountEvent() {
         }
         ctx.clearRect(drawX, drawY, drawWidth, drawHeight);
         ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-        images[i][j] = img.src;
         db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
           if (e === 0) {
             db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
           }
         });
       };
-      img.src = images[i][j];
+      // img.src = images[i][j];
+      // @ts-ignore
+      img.src = await db.images.where("axis").equals(`${i},${j}`).first()!.src!;
     }
-    const up = (e: MouseEvent) => {
+    const up = async (e: MouseEvent) => {
       const [_i, _j] = getGridIndex(e);
       if (_i === -1 || _j === -1) return;
       if (_i !== i || _j !== j) {
-        if (images[i] && images[i][j]) {
-          if (images[_i] && images[_i][_j]) {
-            const temp = JSON.parse(JSON.stringify(images[_i][_j]));
-            images[_i][_j] = JSON.parse(JSON.stringify(images[i][j]));
-            images[i][j] = temp;
-            db.images.where("axis").equals(`${_i},${_j}`).modify({ src: images[_i][_j] });
-            db.images.where("axis").equals(`${i},${j}`).modify({ src: images[i][j] });
+        if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
+          if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
+            db.images.where("axis").equals(`${_i},${_j}`).modify({ axis: `temp` });
+            db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
+            db.images.where("axis").equals(`temp`).modify({ axis: `${i},${j}` });
             // 清空并重绘这两个格子
+            const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
+            const img2_ = await db.images.where("axis").equals(`${i},${j}`).first()!;
             const img = new Image();
+            const img2 = new Image();
+            img.src = img_?.src || '';
+            img2.src = img2_?.src || '';
             img.onload = () => {
               clearCrop(_i, _j);
               drawImageOnGrid(img, _i, _j);
             };
-            img.src = images[_i][_j];
-            const img2 = new Image();
             img2.onload = () => {
               clearCrop(i, j);
               drawImageOnGrid(img2, i, j);
             };
-            img2.src = images[i][j];
           } else {
-            images[_i][_j] = images[i][j];
-            images[i][j] = "";
-            // 修改数据库里对应的主键
             db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
+            const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
             const img = new Image();
+            img.src = img_?.src || '';
+            console.log(img_);
             img.onload = () => {
-              drawImageOnGrid(img, _i, _j);
               clearCrop(i, j);
+              drawImageOnGrid(img, _i, _j);
             };
-            img.src = images[_i][_j];
           }
         }
       } else {
         // 判断格子内是否有图片，若有则调用图片编辑
-        if (images[_i] && images[_i][_j]) {
+        if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
           onCrop(_i, _j);
         } else {
           const input = document.createElement("input");
@@ -423,15 +420,11 @@ function drawCopyRight() {
 }
 
 // 调用图片编辑组件
-function onCrop(x: number, y: number) {
-  if (!images[x][y]) return;
+async function onCrop(x: number, y: number) {
+  if (await db.images.where("axis").equals(`${x},${y}`).count() === 0) return;
   // 获取sourceSrc
   db.images.where("axis").equals(`${x},${y}`).first((e) => {
-    if (e) {
-      cropperSrc.value = e.sourceSrc;
-    } else {
-      cropperSrc.value = images[x][y];
-    }
+    cropperSrc.value = e!.sourceSrc;
   }).then(() => {
     // 获取cropperSrc的宽高
     const img = new Image();
@@ -466,7 +459,6 @@ async function afterCrop() {
 function clearCrop(i, j) {
   const ctx = canvas.value!.getContext("2d")!;
   ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
-  images[i][j] = "";
   db.images.delete(`${i},${j}`);
   cropperDialog.value!.close();
 }
@@ -520,8 +512,6 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
     drawY = 111 + Math.floor(920 / rows.value) * j;
   }
   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-  // 将图片暂存在数组中
-  images[i][j] = img.src;
   db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
     if (e === 0) {
       db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
@@ -547,6 +537,7 @@ async function loadLocalData() {
       e.forEach((item) => {
         const [i, j] = item.axis.split(",").map((e) => Number(e));
         const img = new Image();
+        // @ts-ignore
         img.src = item.src!;
         img.onload = () => {
           drawImageOnGrid(img, i, j);
@@ -598,7 +589,6 @@ function restore() {
   input.type = "file";
   input.accept = ".json";
   input.onchange = () => {
-    images = new Array(20).fill(0).map(() => new Array(20).fill(""));
     const restoreButton = document.getElementById("restore")!;
     const file = input.files![0];
     const reader = new FileReader();
@@ -609,22 +599,9 @@ function restore() {
         const images = JSON.parse(json.images);
         // 清空数据库
         db.images.clear();
-        if (!json.images.includes("sourceSrc")) {
-          // 旧版本导出兼容
-          for (let i = 0; i < cols.value; i++) {
-            for (let j = 0; j < rows.value; j++) {
-              // console.log(i, j);
-              if (images[i] && images[i][j]) {
-                console.log('active', i, j);
-                db.images.put({ axis: `${i},${j}`, src: images[i][j], sourceSrc: images[i][j] });
-              }
-            }
-          }
-        } else {
-          images.map((item: any) => {
-            db.images.put(item);
-          });
-        }
+        images.map((item: any) => {
+          db.images.put(item);
+        });
       }
       if (json.title) localStorage.setItem("title", json.title); else localStorage.removeItem("title");
       if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
@@ -643,8 +620,9 @@ function restore() {
 
 // 清空当前数据
 function clear() {
+  // 弹窗告警
+  if (!confirm("确定要清空当前数据吗？")) return;
   db.images.clear();
-  images = new Array(20).fill(0).map(() => new Array(20).fill(""));
   drawRects();
   const clearButton = document.getElementById("clear")!;
   clearButton.innerText = "清空✅";
@@ -674,10 +652,9 @@ function showResizeDialog() {
 }
 
 // 提交调整格子数量的弹窗
-function submitResize() {
+async function submitResize() {
   // 如果比例发生了变化且有已经填好的图片，则弹窗提醒用户图片会变形
-  if (resizeRows.value / resizeCols.value !== rows.value / cols.value &&
-    JSON.stringify(images).includes("data:image")) {
+  if (resizeRows.value / resizeCols.value !== rows.value / cols.value && await db.images.count() > 0) {
     if (!confirm("调整后的纵横比不同，会导致已填入的图片无法占满格子，是否继续？")) return;
   }
   // 计算原格子数，如果原标题含有"TOP + 总格子数，则也修改标题"
