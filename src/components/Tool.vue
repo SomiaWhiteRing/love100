@@ -3,7 +3,7 @@
     <!-- 写四个按钮，分别是存储，还原，清空，下载 -->
     <button class="btn btn-primary btn-sm" id="save" @click="save">导出</button>
     <button class="btn btn-primary btn-sm" id="restore" @click="restore">导入</button>
-    <button class="btn btn-primary btn-sm" id="clear" @click="clear">清空</button>
+    <button class="btn btn-error btn-sm" id="clear" @click="clear">清空</button>
     <button class="btn btn-primary btn-sm" id="download" @click="download">下载</button>
     <button class="btn btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
 
@@ -118,6 +118,11 @@ const resizeCols = ref<number>(10);
 // DDPower!
 const DDMode = ref<boolean>(false);
 
+// 精细调整格子每格的宽高与间距
+const openFineTune = ref<boolean>(false);
+const rowsWidth = ref<Array<number>>([]);
+const colsWidth = ref<Array<number>>([]);
+
 // 用indexDB来缓存图片
 interface Image {
   axis: string;
@@ -185,44 +190,6 @@ function mountEvent() {
   canvas.value!.addEventListener("mousedown", async (e) => {
     const [i, j] = getGridIndex(e);
     if (i === -1 || j === -1) return;
-
-    const img = new Image();
-    const img_ = await db.images.where("axis").equals(`${i},${j}`).first()!;
-    img.src = img_?.src || '';
-
-    if (img.src) {
-      img.onload = () => {
-        const ctx = canvas.value!.getContext("2d")!;
-        const gridWidth = Math.floor(920 / cols.value) - 12;
-        const gridHeight = Math.floor(920 / rows.value) - 12;
-        const imgWidth = img.width;
-        const imgHeight = img.height;
-        const imgRatio = imgWidth / imgHeight;
-        const gridRatio = gridWidth / gridHeight;
-        let drawWidth: number, drawHeight: number, drawX: number, drawY: number;
-
-        if (imgRatio > gridRatio) {
-          drawWidth = gridWidth;
-          drawHeight = drawWidth / imgRatio;
-          drawX = 11 + Math.floor(920 / cols.value) * i;
-          drawY = 111 + Math.floor(920 / rows.value) * j + (gridHeight - drawHeight) / 2;
-        } else {
-          drawHeight = gridHeight;
-          drawWidth = drawHeight * imgRatio;
-          drawX = 11 + Math.floor(920 / cols.value) * i + (gridWidth - drawWidth) / 2;
-          drawY = 111 + Math.floor(920 / rows.value) * j;
-        }
-
-        ctx.clearRect(drawX, drawY, drawWidth, drawHeight);
-        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-
-        db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
-          if (e === 0) {
-            db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
-          }
-        });
-      };
-    }
 
     const up = async (e: MouseEvent) => {
       const [_i, _j] = getGridIndex(e);
@@ -404,24 +371,20 @@ function drawCopyRight() {
   const text2 = "@苍旻白轮";
   const text3 = "love100.shatranj.space";
   ctx.fillStyle = "#999";
+  ctx.font = "12px tiejili";
   ctx.fillText(
     text1,
-    930 -
-    getTextWidth(text1, "12px tiejili") - 16 -
-    getTextWidth(text2, "12px tiejili") - 16 -
-    getTextWidth(text3, "12px tiejili") - 16,
+    10,
     1060 - 16
   );
   ctx.fillText(
     text2,
-    930 -
-    getTextWidth(text2, "12px tiejili") - 16 -
-    getTextWidth(text3, "12px tiejili") - 16,
+    getTextWidth(text1, "12px tiejili") + 26,
     1060 - 16
   );
   ctx.fillText(
     text3,
-    930 - getTextWidth(text3, "12px tiejili") - 16,
+    getTextWidth(text1, "12px tiejili") + getTextWidth(text2, "12px tiejili") + 42,
     1060 - 16
   );
 }
