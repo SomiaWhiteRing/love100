@@ -1,11 +1,11 @@
 <template>
   <div class="inline-flex gap-9 justify-center items-center">
-    <button class="btn btn-primary btn-sm" id="save" @click="save">导出</button>
-    <button class="btn btn-primary btn-sm" id="restore" @click="restore">导入</button>
-    <button class="btn btn-error btn-sm" id="clear" @click="clear">清空</button>
-    <button class="btn btn-primary btn-sm" id="download" @click="download">下载</button>
-    <button class="btn btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
-    <button class="btn btn-accent btn-sm" @click="showCustomDialog()">精确调整</button>
+    <button class="btn text-white btn-primary btn-sm" id="save" @click="save">导出</button>
+    <button class="btn text-white btn-primary btn-sm" id="restore" @click="restore">导入</button>
+    <button class="btn text-white btn-error btn-sm" id="clear" @click="clear">清空</button>
+    <button class="btn text-white btn-primary btn-sm" id="download" @click="download">下载</button>
+    <button class="btn text-white btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
+    <button class="btn text-white btn-accent btn-sm" @click="showCustomDialog()">精确调整</button>
 
     <label class="label cursor-pointer">
       <input class="toggle" type="checkbox" v-model="titleLimit" :checked="titleLimit" />
@@ -29,8 +29,8 @@
         :fixedNumber="[rowsWidth[cropCoord!.x], colsWidth[cropCoord!.y]]" outputType="png" infoTrue autoCrop fixed
         :enlarge="Math.max(Math.ceil(cropCoord.width / 400), Math.ceil(cropCoord.height / 400))" />
       <div class="flex gap-4 justify-end mt-4">
-        <button class="btn btn-sm btn-warning" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
-        <button class="btn btn-sm btn-primary" @click="afterCrop">确定</button>
+        <button class="btn text-white btn-sm btn-warning" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
+        <button class="btn text-white btn-sm btn-primary" @click="afterCrop">确定</button>
       </div>
     </div>
   </dialog>
@@ -56,14 +56,15 @@
         </div>
       </div>
       <div class="flex gap-4 justify-end mt-4">
-        <button v-if="!DDMode" class="btn btn-sm btn-warning" @click="resizeCols = 20; resizeRows = 20; DDMode = true;">
+        <button v-if="!DDMode" class="btn text-white btn-sm btn-warning"
+          @click="resizeCols = 20; resizeRows = 20; DDMode = true;">
           我的意思是，格子不够用了
         </button>
-        <button v-if="DDMode" class="btn btn-sm btn-success"
+        <button v-if="DDMode" class="btn text-white btn-sm btn-success"
           @click="DDMode = false; resizeRows = (resizeRows > 10 ? 10 : resizeRows); resizeCols = (resizeCols > 10 ? 10 : resizeCols)">
           算了算了
         </button>
-        <button class="btn btn-sm btn-primary" @click="submitResize">确定</button>
+        <button class="btn text-white btn-sm btn-primary" @click="submitResize">确定</button>
       </div>
     </div>
   </dialog>
@@ -180,7 +181,7 @@
       </div>
       <!-- 按钮 -->
       <div class="flex gap-4 justify-end mt-4">
-        <button class="btn btn-sm btn-primary" @click="submitCustom">确定</button>
+        <button class="btn text-white btn-sm btn-primary" @click="submitCustom">确定</button>
       </div>
     </div>
   </dialog>
@@ -1057,18 +1058,18 @@ function customChange(type: "row" | "col" | "rowGap" | "colGap", index: number, 
   }
   switch (type) {
     case "row":
-      const maxWidth = rowsWidth.value[index] + rowsWidth.value[index + 1] - 2
+      const maxWidth = rowsWidth.value[index] + rowsWidth.value[index === rowsWidth.value.length - 1 ? index - 1 : index + 1] - 2
       if (value > maxWidth) value = maxWidth;
       if (value < 2) value = 2;
       customRowsWidth.value[index] = value;
-      customRowsWidth.value[index + 1] = maxWidth - value + 2;
+      customRowsWidth.value[index === rowsWidth.value.length - 1 ? index - 1 : index + 1] = maxWidth - value + 2;
       break;
     case "col":
-      const maxHeight = colsWidth.value[index] + colsWidth.value[index + 1] - 2
+      const maxHeight = colsWidth.value[index] + colsWidth.value[index === colsWidth.value.length - 1 ? index - 1 : index + 1] - 2
       if (value > maxHeight) value = maxHeight;
       if (value < 2) value = 2;
       customColsWidth.value[index] = value;
-      customColsWidth.value[index + 1] = maxHeight - value + 2;
+      customColsWidth.value[index === colsWidth.value.length - 1 ? index - 1 : index + 1] = maxHeight - value + 2;
       break;
     case "rowGap":
       const maxRowGap = rowsWidth.value[index + 1] + rowsGap.value[index] - 2
