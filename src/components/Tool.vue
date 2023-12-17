@@ -1332,7 +1332,7 @@ function copyShareSite() {
     input.select();
     document.execCommand("copy");
     document.body.removeChild(input);
-    alert('已复制到剪贴板!');
+    alert('已复制到剪贴板');
   }
 }
 
