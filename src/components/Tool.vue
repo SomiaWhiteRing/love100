@@ -393,7 +393,8 @@ function mountEvent() {
           }
         }
       } else { // 如果抬起的位置与按下的位置相同，则触发点击事件
-        if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) { // 如果当前格子有图片，则触发图片编辑事件
+        if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) { // 如果当前格子有值，则触发编辑事件
+          console.log('edit');
           onCrop(_i, _j);
         } else { // 如果当前格子没有图片，则触发填表事件
           // 如果填字模式开启或按钮为右键，则触发填字事件
@@ -651,14 +652,14 @@ function getGridIndex(e: MouseEvent) {
   while (x > 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0)) {
     i++;
     // 如果鼠标在两个格子之间，则返回[-1, -1]
-    if (x > 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) && x < 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0)) {
+    if (x > 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i - 1).reduce((a, b) => a + b, 0) && x < 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0)) {
       return [-1, -1];
     }
   }
-  while (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
+  while (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j - 1).reduce((a, b) => a + b, 0)) {
     j++;
     // 如果鼠标在两个格子之间，则返回[-1, -1]
-    if (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) && y < 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
+    if (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j - 1).reduce((a, b) => a + b, 0) && y < 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
       return [-1, -1];
     }
   }
@@ -1133,21 +1134,21 @@ async function changeTable(e) {
     localStorage.setItem("colsWidth", JSON.stringify([250, 32, 250, 32, 250, 32]));
     localStorage.setItem("colsGap", JSON.stringify([10, 10, 10, 10, 10]));
     await db.images.clear();
-    await db.images.put({ axis: `${0},${1}`, type: 'text', text: '入坑作' });
-    await db.images.put({ axis: `${1},${1}`, type: 'text', text: '最喜欢' });
-    await db.images.put({ axis: `${2},${1}`, type: 'text', text: '看最多次' });
-    await db.images.put({ axis: `${3},${1}`, type: 'text', text: '最想安利' });
-    await db.images.put({ axis: `${4},${1}`, type: 'text', text: '最佳剧情' });
-    await db.images.put({ axis: `${0},${3}`, type: 'text', text: '最佳画面' });
-    await db.images.put({ axis: `${1},${3}`, type: 'text', text: '最佳配乐' });
-    await db.images.put({ axis: `${2},${3}`, type: 'text', text: '最佳配音' });
-    await db.images.put({ axis: `${3},${3}`, type: 'text', text: '最治愈' });
-    await db.images.put({ axis: `${4},${3}`, type: 'text', text: '最感动' });
-    await db.images.put({ axis: `${0},${5}`, type: 'text', text: '最虐心' });
-    await db.images.put({ axis: `${1},${5}`, type: 'text', text: '最被低估' });
-    await db.images.put({ axis: `${2},${5}`, type: 'text', text: '最过誉' });
-    await db.images.put({ axis: `${3},${5}`, type: 'text', text: '最离谱' });
-    await db.images.put({ axis: `${4},${5}`, type: 'text', text: '最讨厌' });
+    await db.images.put({ axis: `${0},${1}`, text: '入坑作', type: 'text' });
+    await db.images.put({ axis: `${1},${1}`, text: '最喜欢', type: 'text' });
+    await db.images.put({ axis: `${2},${1}`, text: '看最多次', type: 'text' });
+    await db.images.put({ axis: `${3},${1}`, text: '最想安利', type: 'text' });
+    await db.images.put({ axis: `${4},${1}`, text: '最佳剧情', type: 'text' });
+    await db.images.put({ axis: `${0},${3}`, text: '最佳画面', type: 'text' });
+    await db.images.put({ axis: `${1},${3}`, text: '最佳配乐', type: 'text' });
+    await db.images.put({ axis: `${2},${3}`, text: '最佳配音', type: 'text' });
+    await db.images.put({ axis: `${3},${3}`, text: '最治愈', type: 'text' });
+    await db.images.put({ axis: `${4},${3}`, text: '最感动', type: 'text' });
+    await db.images.put({ axis: `${0},${5}`, text: '最虐心', type: 'text' });
+    await db.images.put({ axis: `${1},${5}`, text: '最被低估', type: 'text' });
+    await db.images.put({ axis: `${2},${5}`, text: '最过誉', type: 'text' });
+    await db.images.put({ axis: `${3},${5}`, text: '最离谱', type: 'text' });
+    await db.images.put({ axis: `${4},${5}`, text: '最讨厌', type: 'text' });
     loadLocalData();
   }
 }
