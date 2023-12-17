@@ -1324,9 +1324,9 @@ async function share() {
 }
 
 // 复制分享链接
-function copyShareSite() {
+async function copyShareSite() {
   if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(shareSite.value)
+    await navigator.clipboard.writeText(shareSite.value)
     alert('已复制到剪贴板!');
   } else {
     const input = document.createElement("input");
