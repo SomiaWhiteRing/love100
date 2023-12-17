@@ -657,7 +657,7 @@ function getGridIndex(e: MouseEvent) {
       return [-1, -1];
     }
   }
-  while (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j - 1).reduce((a, b) => a + b, 0)) {
+  while (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
     j++;
     // 如果鼠标在两个格子之间，则返回[-1, -1]
     if (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j - 1).reduce((a, b) => a + b, 0) && y < 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
