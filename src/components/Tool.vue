@@ -216,14 +216,13 @@
         </div>
       </div>
       <div class="join w-[450px] cursor-pointer">
-        <!-- <div class="rounded-r-none px-2 border border-gray-700 flex items-center w-[340px]">
-          <span class="join-item truncate">{{ shareSite }}</span>
-        </div> -->
         <div>
-          <input :value="shareSite" class="join-item input input-sm input-primary w-[340px] rounded-r-none" />
+          <input :value="shareSite" class="join-item input input-sm input-primary rounded-r-none"
+            :style="{ width: isMobile ? '400px' : '340px' }" readonly />
         </div>
         <div class="indicator">
-          <button class="btn btn-sm btn-primary join-item" @click="copyShareSite">复制到剪贴板</button>
+          <button v-if="!isMobile" class="btn btn-sm btn-primary join-item" @click="copyShareSite">复制到剪贴板</button>
+          <button v-if="isMobile" class="btn btn-sm btn-primary join-item" @click="shareSiteMobile">分享</button>
         </div>
       </div>
     </div>
@@ -1336,6 +1335,19 @@ async function copyShareSite() {
     document.execCommand("copy");
     document.body.removeChild(input);
     alert('已复制到剪贴板!');
+  }
+}
+
+// 移动端分享链接
+async function shareSiteMobile() {
+  if (navigator.share) {
+    await navigator.share({
+      title: '2023推TOP100',
+      text: '2023推TOP100',
+      url: shareSite.value
+    });
+  } else {
+    alert('当前浏览器不支持分享功能，可以尝试选中链接并复制');
   }
 }
 
