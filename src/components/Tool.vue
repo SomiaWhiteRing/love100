@@ -215,12 +215,12 @@
           </div>
         </div>
       </div>
-      <div class="join w-[450px] cursor-pointer" @click="copyShareSite">
+      <div class="join w-[450px] cursor-pointer">
         <div class="rounded-r-none px-2 border border-gray-700 flex items-center w-[340px]">
           <span class="join-item truncate">{{ shareSite }}</span>
         </div>
         <div class="indicator">
-          <button class="btn btn-sm btn-primary join-item">复制到剪贴板</button>
+          <button class="btn btn-sm btn-primary join-item" @click="copyShareSite">复制到剪贴板</button>
         </div>
       </div>
     </div>
@@ -1322,8 +1322,8 @@ async function share() {
 
 // 复制分享链接
 function copyShareSite() {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(shareSite.value);
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(shareSite.value)
     alert('已复制到剪贴板!');
   } else {
     const input = document.createElement("input");
@@ -1332,7 +1332,7 @@ function copyShareSite() {
     input.select();
     document.execCommand("copy");
     document.body.removeChild(input);
-    alert('已复制到剪贴板');
+    alert('已复制到剪贴板!');
   }
 }
 
