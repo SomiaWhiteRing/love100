@@ -1385,14 +1385,6 @@ async function showsharedDialog() {
 function acceptShared() {
   // 清空数据库
   db.images.clear();
-  // 存储数据
-  sharedPreview.value.forEach((row: string[], i: number) => {
-    row.forEach((text: string, j: number) => {
-      if (text) {
-        db.images.put({ axis: `${j},${i}`, text, type: 'text' });
-      }
-    });
-  });
   // 存储表格配置
   localStorage.setItem("title", sharedPreviewConfig.value.title);
   localStorage.setItem("rows", sharedPreviewConfig.value.rows.toString());
@@ -1401,6 +1393,16 @@ function acceptShared() {
   localStorage.setItem("rowsGap", JSON.stringify(sharedPreviewConfig.value.rowsGap));
   localStorage.setItem("colsWidth", JSON.stringify(sharedPreviewConfig.value.colsWidth));
   localStorage.setItem("colsGap", JSON.stringify(sharedPreviewConfig.value.colsGap));
+
+  // 存储数据
+  sharedPreview.value.forEach((row: string[], i: number) => {
+    row.forEach(async (text: string, j: number) => {
+      if (text) {
+        await db.images.put({ axis: `${j},${i}`, text, type: 'text' });
+      }
+    });
+  });
+
   // 刷新页面并移除分享码
   location.href = location.origin
 }
