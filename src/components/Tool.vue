@@ -720,7 +720,8 @@ function drawTextOnGrid(text: string, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
   const gridWidth = rowsWidth.value[i];
   const gridHeight = colsWidth.value[j];
-  ctx.clearRect(
+  ctx.fillStyle = "#fafafa";
+  ctx.fillRect(
     9 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
     109 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
     gridWidth + 4,
