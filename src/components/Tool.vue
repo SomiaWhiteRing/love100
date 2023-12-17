@@ -5,11 +5,16 @@
     <button class="btn btn-error btn-sm" id="clear" @click="clear">清空</button>
     <button class="btn btn-primary btn-sm" id="download" @click="download">下载</button>
     <button class="btn btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
-    <button class="btn btn-accent btn-sm" v-if="!isMobile" @click="showCustomDialog()">精确调整</button>
+    <button class="btn btn-accent btn-sm" @click="showCustomDialog()">精确调整</button>
 
     <label class="label cursor-pointer">
       <input class="toggle" type="checkbox" v-model="titleLimit" :checked="titleLimit" />
       <span class="ml-1">解除标题限制</span>
+    </label>
+
+    <label class="label cursor-pointer" v-if="isMobile">
+      <input class="toggle" type="checkbox" v-model="textMode" :checked="textMode" />
+      <span class="ml-1">填字模式</span>
     </label>
   </div>
   <canvas ref="canvas" width="930" height="1060" />
@@ -80,18 +85,19 @@
         </div>
         <div v-if="customFocusType || customMouseOnType">
           其宽度为
-          <input v-if="customFocusType === 'row' || customMouseOnType === 'row'" class="input input-sm input-primary w-24"
+          <input v-if="(!customMouseOnType && customFocusType === 'row') || customMouseOnType === 'row'"
+            class="input input-sm input-primary w-24"
             :value="customMouseOnType ? customRowsWidth[customMouseOnIndex] : customRowsWidth[customFocusIndex]"
             @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
-          <input v-else-if="customFocusType === 'col' || customMouseOnType === 'col'"
+          <input v-else-if="(!customMouseOnType && customFocusType === 'col') || customMouseOnType === 'col'"
             class="input input-sm input-primary w-24"
             :value="customMouseOnType ? customColsWidth[customMouseOnIndex] : customColsWidth[customFocusIndex]"
             @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
-          <input v-else-if="customFocusType === 'rowGap' || customMouseOnType === 'rowGap'"
+          <input v-else-if="(!customMouseOnType && customFocusType === 'rowGap') || customMouseOnType === 'rowGap'"
             class="input input-sm input-primary w-24"
             :value="customMouseOnType === 'rowGap' ? customRowsGap[customMouseOnIndex] : customRowsGap[customFocusIndex]"
             @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
-          <input v-else-if="customFocusType === 'colGap' || customMouseOnType === 'colGap'"
+          <input v-else-if="(!customMouseOnType && customFocusType === 'colGap') || customMouseOnType === 'colGap'"
             class="input input-sm input-primary w-24"
             :value="customMouseOnType === 'colGap' ? customColsGap[customMouseOnIndex] : customColsGap[customFocusIndex]"
             @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
@@ -102,7 +108,7 @@
           <div>
             点击想要调整的行/列头部或行/列间距，即可在此处调整宽度。
           </div>
-          <div>
+          <div v-if="!isMobile">
             按住行/列间距后可以拖拽调整位置。
           </div>
         </template>
@@ -257,11 +263,16 @@ const customMouseOnIndex = ref<number>(-1);
 const dragEvent = ref<boolean>(false);
 const dragStart = ref<number>(0);
 
+// 填字模式
+const textMode = ref<boolean>(false);
+
 // 用indexDB来缓存图片
 interface Image {
   axis: string;
+  type?: 'image' | 'text';
   src?: string;
   sourceSrc?: string;
+  text?: string;
 }
 
 class Love100DB extends Dexie {
@@ -296,6 +307,11 @@ function mountEvent() {
     e.preventDefault();
   });
 
+  // 封印右键菜单
+  canvas.value!.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+
   // 配置拖拽事件，拖入图片可填表
   canvas.value!.addEventListener("drop", (e) => {
     e.preventDefault();
@@ -305,7 +321,7 @@ function mountEvent() {
       const img = new Image();
       img.onload = () => {
         const [i, j] = getGridIndex(e);
-        if (i !== -1 || j !== -1) drawImageOnGrid(img, i, j);
+        if (i !== -1 || j !== -1) drawOnGrid(img, i, j);
       };
       img.src = reader.result as string;
     };
@@ -329,61 +345,82 @@ function mountEvent() {
       const [_i, _j] = getGridIndex(e);
       if (_i === -1 || _j === -1) return;
 
-      if (_i !== i || _j !== j) {
+      if (_i !== i || _j !== j) { // 如果抬起的位置与按下的位置不同，则触发替换事件
         if (await db.images.where("axis").equals(`${i},${j}`).count() > 0 && await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
           db.images.where("axis").equals(`${_i},${_j}`).modify({ axis: `temp` });
           db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
           db.images.where("axis").equals(`temp`).modify({ axis: `${i},${j}` });
 
-          const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
-          const img2_ = await db.images.where("axis").equals(`${i},${j}`).first()!;
-          const img = new Image();
-          const img2 = new Image();
-          img.src = img_?.src || '';
-          img2.src = img2_?.src || '';
-
-          img.onload = () => {
+          const data = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
+          if (data!.type === 'text' && data!.text) {
             clearCrop(_i, _j);
-            drawImageOnGrid(img, _i, _j);
-          };
+            drawOnGrid(data!.text, _i, _j);
+          } else {
+            const img = new Image();
+            img.src = data?.src || '';
+            img.onload = () => {
+              clearCrop(_i, _j);
+              drawOnGrid(img, _i, _j);
+            };
+          }
 
-          img2.onload = () => {
+          const data2 = await db.images.where("axis").equals(`${i},${j}`).first()!;
+          if (data2!.type === 'text' && data2!.text) {
             clearCrop(i, j);
-            drawImageOnGrid(img2, i, j);
-          };
+            drawOnGrid(data2!.text, i, j);
+          } else {
+            const img2 = new Image();
+            img2.src = data2?.src || '';
+            img2.onload = () => {
+              clearCrop(i, j);
+              drawOnGrid(img2, i, j);
+            };
+          }
         } else if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
           db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
 
-          const img_ = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
-          const img = new Image();
-          img.src = img_?.src || '';
-
-          img.onload = () => {
+          const data = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
+          if (data!.type === 'text' && data!.text) {
             clearCrop(i, j);
-            drawImageOnGrid(img, _i, _j);
-          };
-        }
-      } else {
-        if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
-          onCrop(_i, _j);
-        } else {
-          const input = document.createElement("input");
-          input.type = "file";
-          input.accept = "image/*";
-          input.onchange = () => {
-            const file = input.files![0];
-            const reader = new FileReader();
-            reader.onload = () => {
-              const img = new Image();
-              img.onload = () => {
-                drawImageOnGrid(img, _i, _j);
-                db.images.put({ axis: `${_i},${_j}`, src: img.src, sourceSrc: img.src });
-              };
-              img.src = reader.result as string;
+            drawOnGrid(data!.text, _i, _j);
+          } else {
+            const img = new Image();
+            img.src = data?.src || '';
+            img.onload = () => {
+              clearCrop(i, j);
+              drawOnGrid(img, _i, _j);
             };
-            reader.readAsDataURL(file);
-          };
-          input.click();
+          }
+        }
+      } else { // 如果抬起的位置与按下的位置相同，则触发点击事件
+        if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) { // 如果当前格子有图片，则触发图片编辑事件
+          onCrop(_i, _j);
+        } else { // 如果当前格子没有图片，则触发填表事件
+          // 如果填字模式开启或按钮为右键，则触发填字事件
+          if (textMode.value || e.button === 2) {
+            const text = prompt("请输入文字", "");
+            if (text) {
+              drawOnGrid(text, _i, _j);
+            }
+          } else { // 否则触发填图事件
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.onchange = () => {
+              const file = input.files![0];
+              const reader = new FileReader();
+              reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                  drawOnGrid(img, _i, _j);
+                  db.images.put({ axis: `${_i},${_j}`, src: img.src, sourceSrc: img.src });
+                };
+                img.src = reader.result as string;
+              };
+              reader.readAsDataURL(file);
+            };
+            input.click();
+          }
         }
       }
 
@@ -404,6 +441,7 @@ function drawRects() {
   for (let i = 0; i < cols.value; i++) {
     for (let j = 0; j < rows.value; j++) {
       ctx.strokeRect(10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0), 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0), rowsWidth.value[i] + 2, colsWidth.value[j] + 2);
+      ctx.fillRect(11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0), 111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0), rowsWidth.value[i], colsWidth.value[j]);
     }
   }
 }
@@ -525,8 +563,18 @@ function drawCopyRight() {
 // 调用图片编辑组件
 async function onCrop(x: number, y: number) {
   if (await db.images.where("axis").equals(`${x},${y}`).count() === 0) return;
-  // 获取sourceSrc
   db.images.where("axis").equals(`${x},${y}`).first((e) => {
+    // 如果type为text，则触发填写文字事件
+    if (e!.type === 'text') {
+      const text = prompt("请输入文字", "");
+      if (text) {
+        drawOnGrid(text, x, y);
+      } else {
+        clearCrop(x, y);
+      }
+      return;
+    }
+    // 获取sourceSrc
     cropperSrc.value = e!.sourceSrc;
   }).then(() => {
     // 获取cropperSrc的宽高
@@ -539,7 +587,6 @@ async function onCrop(x: number, y: number) {
         width: img.width,
         height: img.height
       };
-      console.log(cropCoord.value);
       cropperDialog.value!.showModal();
     };
   });
@@ -551,7 +598,7 @@ async function afterCrop() {
     const img = new Image();
     img.onload = () => {
       const [x, y] = [cropCoord.value!.x, cropCoord.value!.y];
-      drawImageOnGrid(img, x, y);
+      drawOnGrid(img, x, y);
       cropperDialog.value!.close();
       cropperSrc.value = "";
     };
@@ -562,8 +609,14 @@ async function afterCrop() {
 // 清空指定格子
 function clearCrop(i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
-  // ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
-  ctx.clearRect(
+  ctx.strokeRect(
+    10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
+    110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
+    rowsWidth.value[i] + 2,
+    colsWidth.value[j] + 2
+  );
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(
     11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
     111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
     rowsWidth.value[i],
@@ -612,7 +665,19 @@ function getGridIndex(e: MouseEvent) {
   return [i - 1, j - 1];
 }
 
-// 在指定格子上绘制图片
+// 在指定格子上绘制……
+function drawOnGrid(data: HTMLImageElement | string, i: number, j: number) {
+  switch (typeof data) {
+    case "string":
+      drawTextOnGrid(data, i, j);
+      break;
+    case "object":
+      drawImageOnGrid(data, i, j);
+      break;
+  }
+}
+
+// 绘制图片
 function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
   const gridWidth = rowsWidth.value[i];
@@ -643,7 +708,39 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
     if (e === 0) {
-      db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src });
+      db.images.put({ axis: `${i},${j}`, src: img.src, sourceSrc: img.src, type: 'image' });
+    }
+  });
+}
+
+// 绘制文字
+function drawTextOnGrid(text: string, i: number, j: number) {
+  const ctx = canvas.value!.getContext("2d")!;
+  const gridWidth = rowsWidth.value[i];
+  const gridHeight = colsWidth.value[j];
+  ctx.clearRect(
+    9 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
+    109 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
+    gridWidth + 4,
+    gridHeight + 4
+  );
+  ctx.fillStyle = "#000";
+  // 先用12px绘制一遍文字，获取文字的长宽，再找出合适的字号绘制一遍
+  ctx.font = "12px tiejili";
+  const textWidth = getTextWidth(text, "12px tiejili");
+  const textHeight = 12;
+  let fontSize = Math.ceil(Math.min(gridWidth / textWidth * 12, gridHeight / textHeight * 12) * 0.9);
+  ctx.font = `${fontSize}px tiejili`;
+  const textTrueWidth = getTextWidth(text, `${fontSize}px tiejili`);
+  // 文字居中绘制
+  ctx.fillText(
+    text,
+    11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0) + (gridWidth - textTrueWidth) / 2,
+    108 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0) + (gridHeight - fontSize) / 2 + fontSize
+  );
+  db.images.where("axis").equals(`${i},${j}`).modify({ text }).then((e) => {
+    if (e === 0) {
+      db.images.put({ axis: `${i},${j}`, text, type: 'text' });
     }
   });
 }
@@ -681,12 +778,16 @@ async function loadLocalData() {
     await db.images.toArray().then((e) => {
       e.forEach((item) => {
         const [i, j] = item.axis.split(",").map((e) => Number(e));
-        const img = new Image();
-        // @ts-ignore
-        img.src = item.src!;
-        img.onload = () => {
-          drawImageOnGrid(img, i, j);
-        };
+        if (item.type === 'text') {
+          drawOnGrid(item.text!, i, j);
+          return;
+        } else {
+          const img = new Image();
+          img.src = item.src!;
+          img.onload = () => {
+            drawOnGrid(img, i, j);
+          };
+        }
       });
     });
     if (localStorage.getItem("title")) {
@@ -772,11 +873,21 @@ function restore() {
 }
 
 // 清空当前数据
-function clear() {
+async function clear() {
   // 弹窗告警
   if (!confirm("确定要清空当前数据吗？")) return;
-  db.images.clear();
+  localStorage.clear();
+  await db.images.clear();
   drawRects();
+  localStorage.setItem("rows", '10');
+  localStorage.setItem("cols", '10');
+  localStorage.setItem("rowsWidth", JSON.stringify(Array(10).fill(80)));
+  localStorage.setItem("rowsGap", JSON.stringify(Array(9).fill(10)));
+  localStorage.setItem("colsWidth", JSON.stringify(Array(10).fill(80)));
+  localStorage.setItem("colsGap", JSON.stringify(Array(9).fill(10)));
+  localStorage.setItem("title", "2023推TOP100");
+  loadLocalData();
+
   const clearButton = document.getElementById("clear")!;
   clearButton.innerText = "清空✅";
   setTimeout(() => {
@@ -844,6 +955,12 @@ function showCustomDialog() {
   customRowsGap.value = rowsGap.value;
   customColsWidth.value = colsWidth.value;
   customColsGap.value = colsGap.value;
+  customMouseOnType.value = "";
+  customMouseOnIndex.value = -1;
+  customFocusType.value = "";
+  customFocusIndex.value = -1;
+  dragEvent.value = false;
+  dragStart.value = 0;
   customDialog.value!.showModal();
 }
 
@@ -920,6 +1037,23 @@ function customMouseOnEvent(type: "row" | "col" | "rowGap" | "colGap" | "", inde
 // 调整行列宽高的值
 function customChange(type: "row" | "col" | "rowGap" | "colGap", index: number, event: InputEvent) {
   let value = Number((event.target as HTMLInputElement).value);
+  // 如果value不是纯数字，则阻止本次输入
+  if (isNaN(value)) {
+    switch (type) {
+      case "row":
+        (event.target as HTMLInputElement).value = customRowsWidth.value[index].toString();
+        return;
+      case "col":
+        (event.target as HTMLInputElement).value = customColsWidth.value[index].toString();
+        return;
+      case "rowGap":
+        (event.target as HTMLInputElement).value = customRowsGap.value[index].toString();
+        return;
+      case "colGap":
+        (event.target as HTMLInputElement).value = customColsGap.value[index].toString();
+        return;
+    }
+  }
   switch (type) {
     case "row":
       const maxWidth = rowsWidth.value[index] + rowsWidth.value[index + 1] - 2
@@ -983,15 +1117,43 @@ function submitCustom() {
   localStorage.setItem("colsWidth", JSON.stringify(colsWidth.value));
   localStorage.setItem("colsGap", JSON.stringify(colsGap.value));
   customDialog.value!.close();
-  // 清空各种临时参数
-  customMouseOnType.value = "";
-  customMouseOnIndex.value = -1;
-  customFocusType.value = "";
-  customFocusIndex.value = -1;
-  dragEvent.value = false;
-  dragStart.value = 0;
   drawRects();
   loadLocalData();
 }
+
+// 读取默认的表格模板
+async function changeTable(e) {
+  if (e === '动画生涯个人喜好表') {
+    localStorage.setItem("title", "动画生涯个人喜好表");
+    localStorage.removeItem("name");
+    localStorage.setItem("rows", "6");
+    localStorage.setItem("cols", "5");
+    localStorage.setItem("rowsWidth", JSON.stringify([172, 172, 172, 172, 172]));
+    localStorage.setItem("rowsGap", JSON.stringify([10, 10, 10, 10, 10]));
+    localStorage.setItem("colsWidth", JSON.stringify([250, 32, 250, 32, 250, 32]));
+    localStorage.setItem("colsGap", JSON.stringify([10, 10, 10, 10, 10]));
+    await db.images.clear();
+    await db.images.put({ axis: `${0},${1}`, type: 'text', text: '入坑作' });
+    await db.images.put({ axis: `${1},${1}`, type: 'text', text: '最喜欢' });
+    await db.images.put({ axis: `${2},${1}`, type: 'text', text: '看最多次' });
+    await db.images.put({ axis: `${3},${1}`, type: 'text', text: '最想安利' });
+    await db.images.put({ axis: `${4},${1}`, type: 'text', text: '最佳剧情' });
+    await db.images.put({ axis: `${0},${3}`, type: 'text', text: '最佳画面' });
+    await db.images.put({ axis: `${1},${3}`, type: 'text', text: '最佳配乐' });
+    await db.images.put({ axis: `${2},${3}`, type: 'text', text: '最佳配音' });
+    await db.images.put({ axis: `${3},${3}`, type: 'text', text: '最治愈' });
+    await db.images.put({ axis: `${4},${3}`, type: 'text', text: '最感动' });
+    await db.images.put({ axis: `${0},${5}`, type: 'text', text: '最虐心' });
+    await db.images.put({ axis: `${1},${5}`, type: 'text', text: '最被低估' });
+    await db.images.put({ axis: `${2},${5}`, type: 'text', text: '最过誉' });
+    await db.images.put({ axis: `${3},${5}`, type: 'text', text: '最离谱' });
+    await db.images.put({ axis: `${4},${5}`, type: 'text', text: '最讨厌' });
+    loadLocalData();
+  }
+}
+
+defineExpose({
+  changeTable
+});
 
 </script>

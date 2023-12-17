@@ -1,14 +1,25 @@
 <script setup lang="ts">
 import Tool from "./Tool.vue";
+import { ref } from "vue";
 import { VGithubIcon } from 'v-github-icon';
-const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent); 
+const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+const tool = ref<any>();
+function letsShow() {
+  if (confirm("此操作会清空表内当前数据，请进行前确认是否需要将当前内容备份。")) {
+    tool.value.changeTable('动画生涯个人喜好表');
+  }
+}
 </script>
 
 <template>
-  <details class="collapse collapse-arrow bg-yellow-300 cursor-pointer mb-2">
-    <summary class="collapse-title text-xl font-medium">2023/12/17 更新说明</summary>
+  <details class="collapse collapse-arrow bg-yellow-300 mb-2">
+    <summary class="collapse-title text-xl font-medium cursor-pointer ">2023/12/17 更新说明</summary>
     <div class="collapse-content">
-      <div>本次更新追加“精细调整”功能。（仅限PC）</div>
+      <div>本次更新追加“精细调整”功能（拖拽功能仅限PC使用）。这个功能有什么用？
+        <button class="btn btn-primary btn-sm" @click="letsShow">点此体验！</button>
+      </div>
+      <div>追加填写文字功能。PC端右键空白格子/手机端启动填字模式开关即可向表内填写文字。</div>
+      <div class="line-through">这鬼东西向着Excel的方向一去不复返了</div>
       <div>为了适应新功能进行了大规模重构，无法保证没有BUG。</div>
       <div>若发现问题请务必
         <a href="https://github.com/SomiaWhiteRing/love100/issues" target="_blank">
@@ -22,8 +33,8 @@ const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
       </div>
     </div>
   </details>
-  <details class="collapse collapse-arrow bg-gray-200 cursor-pointer mb-2">
-    <summary class="collapse-title text-xl font-medium">点击查看使用说明</summary>
+  <details class="collapse collapse-arrow bg-gray-200 mb-2">
+    <summary class="collapse-title text-xl font-medium cursor-pointer">点击查看使用说明</summary>
     <div class="collapse-content">
       <div>推荐在PC端使用。</div>
       <div>鼠标左键点击空格子或将图片拖入格子填表，再次点击编辑格子内图片。</div>
@@ -34,7 +45,7 @@ const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
       <div>建议善用导出，防止出现谜之BUG/杀毒软件清理垃圾等原因丢失记录。</div>
     </div>
   </details>
-  <Tool />
+  <Tool ref="tool" />
   <span class="text-sm text-gray-500 mt-2 inline-flex gap-4">
     <span>推TOP100生成器</span>
     <a href="https://weibo.com/6571509464" target="_blank">@苍旻白轮</a>
