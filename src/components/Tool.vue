@@ -1,11 +1,12 @@
 <template>
   <div class="inline-flex gap-9 justify-center items-center">
-    <button class="btn text-white btn-primary btn-sm" id="save" @click="save">导出</button>
+    <button class="btn text-white btn-primary btn-sm" id="save" @click="save()">导出</button>
     <button class="btn text-white btn-primary btn-sm" id="restore" @click="restore">导入</button>
     <button class="btn text-white btn-error btn-sm" id="clear" @click="clear">清空</button>
     <button class="btn text-white btn-primary btn-sm" id="download" @click="download">下载</button>
     <button class="btn text-white btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
     <button class="btn text-white btn-accent btn-sm" @click="showCustomDialog()">精确调整</button>
+    <button class="btn text-white btn-success btn-sm" @click="showShareDialog()">分享</button>
 
     <label class="label cursor-pointer">
       <input class="toggle" type="checkbox" v-model="titleLimit" :checked="titleLimit" />
@@ -185,11 +186,85 @@
       </div>
     </div>
   </dialog>
+  <!-- 再再再写一个弹窗，用于展示分享的效果和说明 -->
+  <dialog ref="shareDialog">
+    <div class="p-8 flex flex-col gap-2 relative overflow-hidden">
+      <div class="absolute btn btn-ghost top-0 right-0" @click="shareDialog!.close()">✖</div>
+      <span class="text-3xl font-bold">分享图表</span>
+      <div class="flex flex-col gap-2">
+        <div>可以将自己用此工具设计好的图表发给他人来填表！</div>
+        <div>注意：受容量限制，分享的图表将<span class="font-bold">不会</span>包含图片和填表人信息。</div>
+        <div class="text-start">分享效果浏览：</div>
+      </div>
+      <div class="p-2 border border-gray-700 m-auto">
+        <div class="flex flex-col text-start font-bold ml-4">
+          {{ title }}
+        </div>
+        <div class="flex flex-col">
+          <div v-for="(row, index) in sharePreview" :key="row" class="flex" :style="{
+            height: colsWidth[index] / 2.5 + 'px',
+            marginBottom: colsGap[index] / 2.5 + 'px',
+          }">
+            <div v-for="(item, index) in row" :key="item" class="text-xs" :style="{
+              width: rowsWidth[index] / 2.5 + 'px',
+              marginRight: rowsGap[index] / 2.5 + 'px',
+              boxShadow: item ? '' : '0 0 0 1px #999',
+            }">
+              {{ item }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="join w-[450px] cursor-pointer" @click="copyShareSite">
+        <div class="rounded-r-none px-2 border border-gray-700 flex items-center w-[340px]">
+          <span class="join-item truncate">{{ shareSite }}</span>
+        </div>
+        <div class="indicator">
+          <button class="btn btn-sm btn-primary join-item">复制到剪贴板</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+  <!-- 再再再再写一个弹窗，用于接受分享 -->
+  <dialog ref="sharedDialog">
+    <div class="p-8 flex flex-col gap-2 relative overflow-hidden">
+      <div class="absolute btn btn-ghost top-0 right-0" @click="closeSharedDialog()">✖</div>
+      <span class="text-3xl font-bold">你收到了一份表！</span>
+      <div class="flex flex-col gap-2">
+        <div>注意：接受分享后，将会<span class="font-bold">覆盖</span>当前的图表！</div>
+        <div class="text-start">图表浏览：</div>
+      </div>
+      <div class="p-2 border border-gray-700 m-auto">
+        <div class="flex flex-col text-start font-bold ml-4">
+          {{ sharedPreviewConfig.title }}
+        </div>
+        <div class="flex flex-col">
+          <div v-for="(row, index) in sharedPreview" :key="row" class="flex" :style="{
+            height: sharedPreviewConfig.colsWidth[index] / 2.5 + 'px',
+            marginBottom: sharedPreviewConfig.colsGap[index] / 2.5 + 'px',
+          }">
+            <div v-for="(item, index) in row" :key="item" class="text-xs" :style="{
+              width: sharedPreviewConfig.rowsWidth[index] / 2.5 + 'px',
+              marginRight: sharedPreviewConfig.rowsGap[index] / 2.5 + 'px',
+              boxShadow: item ? '' : '0 0 0 1px #999',
+            }">
+              {{ item }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-4 justify-end mt-4">
+        <button class="btn text-white btn-secondary btn-sm" id="shareSave" @click="save('shareSave')">我要先导出已填写的图表</button>
+        <button class="btn text-white btn-sm btn-primary" @click="acceptShared">确定覆盖</button>
+      </div>
+    </div>
+  </dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from "vue";
 import Dexie, { type Table } from "dexie";
+import pako from "pako";
 
 const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
 
@@ -267,6 +342,33 @@ const dragStart = ref<number>(0);
 // 填字模式
 const textMode = ref<boolean>(false);
 
+// 分享功能
+const shareDialog = ref<HTMLDialogElement>();
+const sharePreview = ref<Array<any>>([]);
+const shareSite = ref<string>('');
+
+// 接受分享
+const sharedDialog = ref<HTMLDialogElement>();
+const sharedKey = ref<string>('');
+const sharedPreviewConfig = ref<{
+  title: string;
+  rows: number;
+  cols: number;
+  rowsWidth: Array<number>;
+  rowsGap: Array<number>;
+  colsWidth: Array<number>;
+  colsGap: Array<number>;
+}>({
+  title: '',
+  rows: 0,
+  cols: 0,
+  rowsWidth: [],
+  rowsGap: [],
+  colsWidth: [],
+  colsGap: []
+});
+const sharedPreview = ref<Array<any>>([]);
+
 // 用indexDB来缓存图片
 interface Image {
   axis: string;
@@ -294,6 +396,11 @@ db.version(1).stores({
 
 onMounted(() => {
   mountEvent()
+  // 如果路由中有shareKey参数，弹出确认接受分享的弹窗
+  if (location.search.includes('shareKey')) {
+    sharedKey.value = location.search.split('shareKey=')[1].split('&')[0];
+    showsharedDialog();
+  }
 });
 
 function mountEvent() {
@@ -724,6 +831,8 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
 
 // 绘制文字
 function drawTextOnGrid(text: string, i: number, j: number) {
+  // 文字中的英文逗号和#号转换成中文逗号和井号，防止导入导出时解析错误
+  text = text.replace(/,/g, "，").replace(/#/g, "＃");
   const ctx = canvas.value!.getContext("2d")!;
   const gridWidth = rowsWidth.value[i];
   const gridHeight = colsWidth.value[j];
@@ -732,7 +841,7 @@ function drawTextOnGrid(text: string, i: number, j: number) {
     9 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
     109 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
     gridWidth + 4,
-    gridHeight + 4
+    gridHeight + 6
   );
   ctx.fillStyle = "#000";
   // 先用12px绘制一遍文字，获取文字的长宽，再找出合适的字号绘制一遍
@@ -814,8 +923,8 @@ async function loadLocalData() {
 }
 
 // 存储数据副本
-async function save() {
-  const saveButton = document.getElementById("save")!;
+async function save(event?: string) {
+  const saveButton = event ? document.getElementById(event)! : document.getElementById("save")!;
   saveButton.innerText = "导出中...";
   /** 改为组成json并下载 */
   const json = {
@@ -1133,7 +1242,7 @@ function submitCustom() {
 }
 
 // 读取默认的表格模板
-async function changeTable(e) {
+async function changeTable(e: string) {
   if (e === '动画生涯个人喜好表') {
     localStorage.setItem("title", "动画生涯个人喜好表");
     localStorage.removeItem("name");
@@ -1166,5 +1275,133 @@ async function changeTable(e) {
 defineExpose({
   changeTable
 });
+
+// 打开分享弹窗
+async function showShareDialog() {
+  // 构建浏览数据
+  sharePreview.value = JSON.parse(JSON.stringify(new Array(rows.value).fill(new Array(cols.value).fill(''))));
+  console.log(sharePreview.value);
+  for (let i = 0; i < cols.value; i++) {
+    for (let j = 0; j < rows.value; j++) {
+      await db.images.where("axis").equals(`${i},${j}`).first().then((e) => {
+        if (e && e.type === 'text') {
+          sharePreview.value[j][i] = e.text;
+        }
+      });
+    }
+  }
+  shareSite.value = window.location.origin + '?shareKey=' + await share();
+  shareDialog.value!.showModal();
+}
+
+// 生成分享链接
+async function share() {
+  const json = {
+    images: [] as any[],
+    title: localStorage.getItem("title")! || '',
+    rows: localStorage.getItem("rows")! || 10,
+    cols: localStorage.getItem("cols")! || 10,
+    rowsWidth: localStorage.getItem("rowsWidth")! || JSON.stringify(Array(10).fill(80)),
+    rowsGap: localStorage.getItem("rowsGap")! || JSON.stringify(Array(9).fill(10)),
+    colsWidth: localStorage.getItem("colsWidth")! || JSON.stringify(Array(10).fill(80)),
+    colsGap: localStorage.getItem("colsGap")! || JSON.stringify(Array(9).fill(10))
+  };
+  // 存储所有类型为text的数据项
+  await db.images.toArray().then((e) => {
+    e.forEach((item) => {
+      if (item.type === 'text') {
+        // json.images.push(item);
+        // 只提取关键数据，尽可能压缩表长
+        json.images.push(`${item.axis}#${item.text}`);
+      }
+    });
+  });
+  const zipJson = zip(json);
+  return zipJson;
+}
+
+// 复制分享链接
+function copyShareSite() {
+  navigator.clipboard.writeText(shareSite.value);
+  alert('已复制到剪贴板，发送给你的朋友吧！');
+}
+
+// 打开被分享弹窗
+async function showsharedDialog() {
+  // 解压分享码
+  const data = unzip(sharedKey.value);
+  if (data.images && data.title) {
+    // 解析images，组成sharedPreview与sharedPreviewConfig
+    sharedPreviewConfig.value = {
+      rows: Number(data.rows),
+      cols: Number(data.cols),
+      rowsWidth: JSON.parse(data.rowsWidth),
+      rowsGap: JSON.parse(data.rowsGap),
+      colsWidth: JSON.parse(data.colsWidth),
+      colsGap: JSON.parse(data.colsGap),
+      title: data.title
+    };
+    sharedPreview.value = JSON.parse(JSON.stringify(new Array(sharedPreviewConfig.value.rows).fill(new Array(sharedPreviewConfig.value.cols).fill(''))));
+    data.images.forEach((item: string) => {
+      const [axis, text] = item.split('#');
+      const [i, j] = axis.split(',').map((e: string) => Number(e));
+      sharedPreview.value[j][i] = text;
+    });
+    console.log(sharedPreview.value);
+    // 打开弹窗
+    sharedDialog.value!.showModal();
+  }
+}
+
+// 确认接收分享
+function acceptShared() {
+  // 清空数据库
+  db.images.clear();
+  // 存储数据
+  sharedPreview.value.forEach((row: string[], i: number) => {
+    row.forEach((text: string, j: number) => {
+      if (text) {
+        db.images.put({ axis: `${j},${i}`, text, type: 'text' });
+      }
+    });
+  });
+  // 存储表格配置
+  localStorage.setItem("title", sharedPreviewConfig.value.title);
+  localStorage.setItem("rows", sharedPreviewConfig.value.rows.toString());
+  localStorage.setItem("cols", sharedPreviewConfig.value.cols.toString());
+  localStorage.setItem("rowsWidth", JSON.stringify(sharedPreviewConfig.value.rowsWidth));
+  localStorage.setItem("rowsGap", JSON.stringify(sharedPreviewConfig.value.rowsGap));
+  localStorage.setItem("colsWidth", JSON.stringify(sharedPreviewConfig.value.colsWidth));
+  localStorage.setItem("colsGap", JSON.stringify(sharedPreviewConfig.value.colsGap));
+  // 刷新页面并移除分享码
+  location.href = location.origin
+}
+
+// 不接收分享
+function closeSharedDialog() {
+  location.href = location.origin
+}
+
+// 压缩json
+function zip(json: any) {
+  const str = encodeURIComponent(JSON.stringify(json));
+  const binaryString = pako.deflate(str, { to: 'string' })
+  let encodeStr = '';
+  for (let i = 0; i < binaryString.length; i++) {
+    encodeStr += String.fromCharCode(binaryString[i]);
+  }
+  return btoa(encodeStr);
+}
+
+// 解压json
+function unzip(encodeStr: string) {
+  const decodeStr = atob(encodeStr);
+  let binaryString = new Uint8Array(decodeStr.length);
+  for (let i = 0; i < decodeStr.length; i++) {
+    binaryString[i] = decodeStr.charCodeAt(i);
+  }
+  const json = pako.inflate(binaryString, { to: 'string' });
+  return JSON.parse(decodeURIComponent(json));
+}
 
 </script>

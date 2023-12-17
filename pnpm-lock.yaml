@@ -11,6 +11,9 @@ dependencies:
   dexie:
     specifier: ^3.2.4
     version: 3.2.4
+  pako:
+    specifier: ^2.1.0
+    version: 2.1.0
   v-github-icon:
     specifier: ^3.1.1
     version: 3.1.1
@@ -884,6 +887,10 @@ packages:
     dependencies:
       wrappy: 1.0.2
     dev: true
+
+  /pako@2.1.0:
+    resolution: {integrity: sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==}
+    dev: false
 
   /path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
