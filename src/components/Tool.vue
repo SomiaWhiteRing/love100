@@ -1342,8 +1342,7 @@ async function copyShareSite() {
 async function shareSiteMobile() {
   if (navigator.share) {
     await navigator.share({
-      title: '2023推TOP100',
-      text: '2023推TOP100',
+      title: title.value,
       url: shareSite.value
     });
   } else {
