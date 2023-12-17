@@ -216,8 +216,11 @@
         </div>
       </div>
       <div class="join w-[450px] cursor-pointer">
-        <div class="rounded-r-none px-2 border border-gray-700 flex items-center w-[340px]">
+        <!-- <div class="rounded-r-none px-2 border border-gray-700 flex items-center w-[340px]">
           <span class="join-item truncate">{{ shareSite }}</span>
+        </div> -->
+        <div>
+          <input :value="shareSite" class="join-item input input-sm input-primary w-[340px] rounded-r-none" />
         </div>
         <div class="indicator">
           <button class="btn btn-sm btn-primary join-item" @click="copyShareSite">复制到剪贴板</button>
