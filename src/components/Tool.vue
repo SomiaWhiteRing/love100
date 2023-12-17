@@ -1330,7 +1330,8 @@ function copyShareSite() {
 async function showsharedDialog() {
   // 解压分享码
   const data = unzip(sharedKey.value);
-  if (data.images && data.title) {
+  console.log(data);
+  if (data.images) {
     // 解析images，组成sharedPreview与sharedPreviewConfig
     sharedPreviewConfig.value = {
       rows: Number(data.rows),
