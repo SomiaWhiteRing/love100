@@ -244,9 +244,9 @@
   <dialog ref="sharedDialog">
     <div class="p-8 flex flex-col gap-2 relative overflow-hidden">
       <div class="absolute btn btn-ghost top-0 right-0" @click="closeSharedDialog()">✖</div>
-      <span class="text-3xl font-bold">你收到了一份表！</span>
+      <span class="text-3xl font-bold">你收到了一张表！</span>
       <div class="flex flex-col gap-2">
-        <div>注意：接受分享后，将会<span class="font-bold">覆盖</span>当前的图表！</div>
+        <div>注意：如果已经有表填到一半，将会被这张表<span class="font-bold">覆盖</span>！</div>
         <div class="text-start">图表浏览：</div>
       </div>
       <div class="p-2 border border-gray-700 m-auto">
