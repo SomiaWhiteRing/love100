@@ -635,6 +635,13 @@ function getTextWidth(text: string, font: string) {
   return ctx.measureText(text).width;
 }
 
+// 计算文本的显示高度
+function getTextHeight(text: string, font: string) {
+  const ctx = canvas.value!.getContext("2d")!;
+  ctx.font = font;
+  return ctx.measureText(text).actualBoundingBoxAscent;
+}
+
 // 获取鼠标在canvas中的坐标
 function getMousePosition(e: MouseEvent) {
   const rect = canvas.value!.getBoundingClientRect();
@@ -731,15 +738,16 @@ function drawTextOnGrid(text: string, i: number, j: number) {
   // 先用12px绘制一遍文字，获取文字的长宽，再找出合适的字号绘制一遍
   ctx.font = "12px tiejili";
   const textWidth = getTextWidth(text, "12px tiejili");
-  const textHeight = 12;
+  const textHeight = getTextHeight(text, "12px tiejili");
   let fontSize = Math.ceil(Math.min(gridWidth / textWidth * 12, gridHeight / textHeight * 12) * 0.9);
   ctx.font = `${fontSize}px tiejili`;
   const textTrueWidth = getTextWidth(text, `${fontSize}px tiejili`);
+  const textTrueHeight = getTextHeight(text, `${fontSize}px tiejili`);
   // 文字居中绘制
   ctx.fillText(
     text,
     11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0) + (gridWidth - textTrueWidth) / 2,
-    108 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0) + (gridHeight - fontSize) / 2 + fontSize
+    111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0) + (gridHeight - textTrueHeight) / 2 + textTrueHeight
   );
   db.images.where("axis").equals(`${i},${j}`).modify({ text }).then((e) => {
     if (e === 0) {
