@@ -384,7 +384,7 @@ class Love100DB extends Dexie {
   images!: Table<Image>;
   constructor() {
     super("love100");
-    this.version(1).stores({
+    this.version(2).stores({
       images: '&axis'
     });
   }
@@ -1382,7 +1382,7 @@ async function showsharedDialog() {
 }
 
 // 确认接收分享
-function acceptShared() {
+async function acceptShared() {
   // 清空数据库
   db.images.clear();
   // 存储表格配置
@@ -1395,13 +1395,13 @@ function acceptShared() {
   localStorage.setItem("colsGap", JSON.stringify(sharedPreviewConfig.value.colsGap));
 
   // 存储数据
-  sharedPreview.value.forEach((row: string[], i: number) => {
-    row.forEach(async (text: string, j: number) => {
+  await Promise.all(sharedPreview.value.map(async (row: string[], i: number) => {
+    await Promise.all(row.map(async (text: string, j: number) => {
       if (text) {
         await db.images.put({ axis: `${j},${i}`, text, type: 'text' });
       }
-    });
-  });
+    }));
+  }));
 
   // 刷新页面并移除分享码
   location.href = location.origin
