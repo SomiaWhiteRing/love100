@@ -1,11 +1,11 @@
 <template>
   <div class="inline-flex gap-9 justify-center items-center">
-    <!-- 写四个按钮，分别是存储，还原，清空，下载 -->
     <button class="btn btn-primary btn-sm" id="save" @click="save">导出</button>
     <button class="btn btn-primary btn-sm" id="restore" @click="restore">导入</button>
     <button class="btn btn-error btn-sm" id="clear" @click="clear">清空</button>
     <button class="btn btn-primary btn-sm" id="download" @click="download">下载</button>
     <button class="btn btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
+    <button class="btn btn-accent btn-sm" v-if="!isMobile" @click="showCustomDialog()">精确调整</button>
 
     <label class="label cursor-pointer">
       <input class="toggle" type="checkbox" v-model="titleLimit" :checked="titleLimit" />
@@ -16,12 +16,12 @@
   <!-- 写一个弹窗，内含vue-cropper图片编辑组件 -->
   <dialog ref="cropperDialog">
     <div class="p-8 flex flex-col gap-4 relative overflow-hidden">
-      <button class="absolute btn btn-ghost top-0 right-0" @click="cropperDialog!.close()">
+      <button class="absolute btn btn-ghost top-0 right-0" @click="cropperDialog!.close(); cropperSrc = ''">
         ✖
       </button>
       <span class="text-3xl mb-4 font-bold">编辑图片</span>
-      <vue-cropper ref="cropperRef" style="width: 400px; height: 400px" :img="cropperSrc" autoCrop fixed
-        :fixedNumber="[920 / cols - 12, 920 / rows - 12]" outputType="png" infoTrue
+      <vue-cropper ref="cropperRef" v-if="cropperSrc" style="width: 400px; height: 400px" :img="cropperSrc"
+        :fixedNumber="[rowsWidth[cropCoord!.x], colsWidth[cropCoord!.y]]" outputType="png" infoTrue autoCrop fixed
         :enlarge="Math.max(Math.ceil(cropCoord.width / 400), Math.ceil(cropCoord.height / 400))" />
       <div class="flex gap-4 justify-end mt-4">
         <button class="btn btn-sm btn-warning" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
@@ -62,11 +62,129 @@
       </div>
     </div>
   </dialog>
+  <!-- 再再写一个弹窗，可以利用类似excel的方式精细调整格子的宽高与间距 -->
+  <dialog ref="customDialog">
+    <div class="p-8 flex flex-col gap-4 relative overflow-hidden">
+      <div class="absolute btn btn-ghost top-0 right-0" @click="customDialog!.close()">✖</div>
+      <span class="text-3xl font-bold">精确调整</span>
+      <!-- 数值调整区 -->
+      <div class="flex h-16 flex-col gap-4">
+        <div v-if="customFocusType === customMouseOnType && customFocusIndex === customMouseOnIndex && customFocusType">
+          当前正在调整第{{ toChinese(customFocusIndex + 1) }}{{ toChinese(customFocusType) }}
+        </div>
+        <div v-else-if="customMouseOnType">
+          当前选中的目标为第{{ toChinese(customMouseOnIndex + 1) }}{{ toChinese(customMouseOnType) }}
+        </div>
+        <div v-else-if="customFocusType">
+          当前正在调整第{{ toChinese(customFocusIndex + 1) }}{{ toChinese(customFocusType) }}
+        </div>
+        <div v-if="customFocusType || customMouseOnType">
+          其宽度为
+          <input v-if="customFocusType === 'row' || customMouseOnType === 'row'" class="input input-sm input-primary w-24"
+            :value="customMouseOnType ? customRowsWidth[customMouseOnIndex] : customRowsWidth[customFocusIndex]"
+            @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
+          <input v-else-if="customFocusType === 'col' || customMouseOnType === 'col'"
+            class="input input-sm input-primary w-24"
+            :value="customMouseOnType ? customColsWidth[customMouseOnIndex] : customColsWidth[customFocusIndex]"
+            @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
+          <input v-else-if="customFocusType === 'rowGap' || customMouseOnType === 'rowGap'"
+            class="input input-sm input-primary w-24"
+            :value="customMouseOnType === 'rowGap' ? customRowsGap[customMouseOnIndex] : customRowsGap[customFocusIndex]"
+            @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
+          <input v-else-if="customFocusType === 'colGap' || customMouseOnType === 'colGap'"
+            class="input input-sm input-primary w-24"
+            :value="customMouseOnType === 'colGap' ? customColsGap[customMouseOnIndex] : customColsGap[customFocusIndex]"
+            @input="customFocusType && customChange(customFocusType, customFocusIndex, $event as InputEvent)" />
+          px
+        </div>
+        <!-- 当没有选中的项时，显示操作说明 -->
+        <template v-else>
+          <div>
+            点击想要调整的行/列头部或行/列间距，即可在此处调整宽度。
+          </div>
+          <div>
+            按住行/列间距后可以拖拽调整位置。
+          </div>
+        </template>
+      </div>
+      <!-- 绘制操作区 -->
+      <div class="w-[500px] h-[500px] flex flex-col relative" @mouseleave="dragEvent = false">
+        <!-- 底部背景，代表表格区域 -->
+        <div class="w-[455px] h-[455px] flex flex-col bg-gray-400 absolute right-0 bottom-0" />
+        <!-- 绘制行 -->
+        <div v-for="(item, index) in customRowsWidth" :key="index" style="height: 100%; position:absolute;" :style="{
+          width: (item + 2) / 2 + 'px',
+          left: (45 + customRowsGap.slice(0, index).reduce((a, b) => a + b, 0) / 2 + customRowsWidth.slice(0, index).reduce((a, b) => a + b + 2, 0) / 2) + 'px',
+          zIndex: ((customFocusType === 'row' && customFocusIndex === index && !customMouseOnType) ||
+            (customMouseOnType === 'row' && customMouseOnIndex === index)) ? 1 : 'auto',
+          background: ((customFocusType === 'row' && customFocusIndex === index && !customMouseOnType) ||
+            (customMouseOnType === 'row' && customMouseOnIndex === index)) ? '#3f9eff33' : 'transparent'
+        }" @mouseleave="customMouseOnEvent('', -1, $event)">
+          <div
+            class="h-[45px] w-full bg-transparent absolute top-0 cursor-pointer flex justify-center items-center select-none"
+            @click="customFocusEvent('row', index, $event)" @mousemove="customMouseOnEvent('row', index, $event)">
+            {{ customRowsWidth[index] }}
+          </div>
+        </div>
+        <!-- 绘制列 -->
+        <div v-for="(item, index) in customColsWidth" :key="index" style="width: 100%; position:absolute;" :style="{
+          height: (item + 2) / 2 + 'px',
+          top: (45 + customColsGap.slice(0, index).reduce((a, b) => a + b, 0) / 2 + customColsWidth.slice(0, index).reduce((a, b) => a + b + 2, 0) / 2) + 'px',
+          zIndex: ((customFocusType === 'col' && customFocusIndex === index && !customMouseOnType) ||
+            (customMouseOnType === 'col' && customMouseOnIndex === index)) ? 1 : 'auto',
+          background: ((customFocusType === 'col' && customFocusIndex === index && !customMouseOnType) ||
+            (customMouseOnType === 'col' && customMouseOnIndex === index)) ? '#3f9eff33' : 'transparent'
+        }" @mouseleave="customMouseOnEvent('', -1, $event)">
+          <div
+            class="w-[45px] h-full bg-transparent absolute left-0 cursor-pointer flex justify-center items-center select-none"
+            @click="customFocusEvent('col', index, $event)" @mousemove="customMouseOnEvent('col', index, $event)">
+            {{ customColsWidth[index] }}
+          </div>
+        </div>
+        <!-- 绘制行间距 -->
+        <div v-for="(item, index) in customRowsGap" :key="index"
+          style="height: 100%;position:absolute;cursor: col-resize;background-color:#FFFFFF;" :style="{
+            width: item / 2 + 'px',
+            left: (45 + customRowsGap.slice(0, index).reduce((a, b) => a + b, 0) / 2 + customRowsWidth.slice(0, index + 1).reduce((a, b) => a + b + 2, 0) / 2) + 'px',
+            zIndex: ((customFocusType === 'rowGap' && customFocusIndex === index && !customMouseOnType) ||
+              (customMouseOnType === 'rowGap' && customMouseOnIndex === index)) ? 1 : 'auto',
+          }" @mousedown="customFocusEvent('rowGap', index, $event)" @mouseup="dragEvent = false"
+          @mousemove="customMouseOnEvent('rowGap', index, $event)"
+          @mouseleave="dragEvent ? customMouseOnEvent('rowGap', index, $event) : customMouseOnEvent('', -1, $event)">
+          <div v-if="((customFocusType === 'rowGap' && customFocusIndex === index && !customMouseOnType) ||
+            (customMouseOnType === 'rowGap' && customMouseOnIndex === index))"
+            class="bg-[#3f9eff] w-full h-full absolute top-0 opacity-20" />
+        </div>
+        <!-- 绘制列间距 -->
+        <div v-for="(item, index) in customColsGap" :key="index"
+          style="width: 100%;position:absolute;cursor: row-resize;background-color:#FFFFFF;" :style="{
+            height: item / 2 + 'px',
+            top: (45 + customColsGap.slice(0, index).reduce((a, b) => a + b, 0) / 2 + customColsWidth.slice(0, index + 1).reduce((a, b) => a + b + 2, 0) / 2) + 'px',
+            zIndex: ((customFocusType === 'colGap' && customFocusIndex === index && !customMouseOnType) ||
+              (customMouseOnType === 'colGap' && customMouseOnIndex === index)) ? 1 : 'auto',
+            background: ((customFocusType === 'colGap' && customFocusIndex === index && !customMouseOnType) ||
+              (customMouseOnType === 'colGap' && customMouseOnIndex === index)) ? '#3f9eff33' : '#FFFFFF',
+          }" @mousedown="customFocusEvent('colGap', index, $event)" @mouseup="dragEvent = false"
+          @mousemove="customMouseOnEvent('colGap', index, $event)"
+          @mouseleave="dragEvent ? customMouseOnEvent('colGap', index, $event) : customMouseOnEvent('', -1, $event)">
+          <div v-if="((customFocusType === 'colGap' && customFocusIndex === index && !customMouseOnType) ||
+            (customMouseOnType === 'colGap' && customMouseOnIndex === index))"
+            class="bg-[#3f9eff] w-full h-full absolute top-0 opacity-20" />
+        </div>
+      </div>
+      <!-- 按钮 -->
+      <div class="flex gap-4 justify-end mt-4">
+        <button class="btn btn-sm btn-primary" @click="submitCustom">确定</button>
+      </div>
+    </div>
+  </dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, nextTick } from "vue";
 import Dexie, { type Table } from "dexie";
+
+const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
 
 const canvas = ref<HTMLCanvasElement>();
 
@@ -118,10 +236,26 @@ const resizeCols = ref<number>(10);
 // DDPower!
 const DDMode = ref<boolean>(false);
 
-// 精细调整格子每格的宽高与间距
-const openFineTune = ref<boolean>(false);
-const rowsWidth = ref<Array<number>>([]);
-const colsWidth = ref<Array<number>>([]);
+// 格子每格的宽高与间距
+const rowsWidth = ref<Array<number>>([80, 80, 80, 80, 80, 80, 80, 80, 80, 80]);
+const rowsGap = ref<Array<number>>([10, 10, 10, 10, 10, 10, 10, 10, 10]);
+const colsWidth = ref<Array<number>>([80, 80, 80, 80, 80, 80, 80, 80, 80, 80]);
+const colsGap = ref<Array<number>>([10, 10, 10, 10, 10, 10, 10, 10, 10]);
+
+// 调整格子每格的宽高与间距
+const customDialog = ref<HTMLDialogElement>();
+const customRowsWidth = ref<Array<number>>([80, 80, 80, 80, 80, 80, 80, 80, 80, 80]);
+const customRowsGap = ref<Array<number>>([10, 10, 10, 10, 10, 10, 10, 10, 10]);
+const customColsWidth = ref<Array<number>>([80, 80, 80, 80, 80, 80, 80, 80, 80, 80]);
+const customColsGap = ref<Array<number>>([10, 10, 10, 10, 10, 10, 10, 10, 10]);
+
+// 调整间距时的各类杂用参数
+const customFocusType = ref<"row" | "col" | "rowGap" | "colGap" | "">("");
+const customFocusIndex = ref<number>(-1);
+const customMouseOnType = ref<"row" | "col" | "rowGap" | "colGap" | "">("");
+const customMouseOnIndex = ref<number>(-1);
+const dragEvent = ref<boolean>(false);
+const dragStart = ref<number>(0);
 
 // 用indexDB来缓存图片
 interface Image {
@@ -269,8 +403,7 @@ function drawRects() {
   ctx.fillStyle = "#FFF";
   for (let i = 0; i < cols.value; i++) {
     for (let j = 0; j < rows.value; j++) {
-      ctx.strokeRect(10 + Math.floor(920 / cols.value) * i, 110 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 10, Math.floor(920 / rows.value) - 10);
-      ctx.fillRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
+      ctx.strokeRect(10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0), 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0), rowsWidth.value[i] + 2, colsWidth.value[j] + 2);
     }
   }
 }
@@ -420,15 +553,22 @@ async function afterCrop() {
       const [x, y] = [cropCoord.value!.x, cropCoord.value!.y];
       drawImageOnGrid(img, x, y);
       cropperDialog.value!.close();
+      cropperSrc.value = "";
     };
     img.src = data;
   });
 }
 
 // 清空指定格子
-function clearCrop(i, j) {
+function clearCrop(i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
-  ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
+  // ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, Math.floor(920 / cols.value) - 12, Math.floor(920 / rows.value) - 12);
+  ctx.clearRect(
+    11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
+    111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
+    rowsWidth.value[i],
+    colsWidth.value[j]
+  );
   db.images.delete(`${i},${j}`);
   cropperDialog.value!.close();
 }
@@ -451,35 +591,54 @@ function getMousePosition(e: MouseEvent) {
 // 获取鼠标在哪个格子
 function getGridIndex(e: MouseEvent) {
   const [x, y] = getMousePosition(e);
-  // 如果鼠标不在格子部分，返回[-1, -1]
-  if (x % Math.floor(920 / cols.value) < 9 || (y - 100) % Math.floor(920 / rows.value) < 9 || y < 100 || y > (100 + Math.floor(920 / rows.value) * rows.value)) return [-1, -1];
-  const i = Math.floor((x - 11) / Math.floor(920 / cols.value));
-  const j = Math.floor((y - 100) / Math.floor(920 / rows.value));
-  return [i, j];
+  let i = 0, j = 0;
+  // 鼠标在上下左右边缘时返回[-1, -1]
+  if (x < 10 || y < 110 || x > 920 || y > 1020) return [-1, -1];
+  // 鼠标在哪个格子就返回哪个格子的坐标
+  while (x > 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0)) {
+    i++;
+    // 如果鼠标在两个格子之间，则返回[-1, -1]
+    if (x > 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) && x < 10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0)) {
+      return [-1, -1];
+    }
+  }
+  while (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
+    j++;
+    // 如果鼠标在两个格子之间，则返回[-1, -1]
+    if (y > 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) && y < 110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0)) {
+      return [-1, -1];
+    }
+  }
+  return [i - 1, j - 1];
 }
 
 // 在指定格子上绘制图片
 function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
-  const gridWidth = Math.floor(920 / cols.value) - 12;
-  const gridHeight = Math.floor(920 / rows.value) - 12;
-  ctx.clearRect(11 + Math.floor(920 / cols.value) * i, 111 + Math.floor(920 / rows.value) * j, gridWidth, gridHeight);
+  const gridWidth = rowsWidth.value[i];
+  const gridHeight = colsWidth.value[j];
+  ctx.clearRect(
+    11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
+    111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
+    gridWidth,
+    gridHeight
+  );
   // 绘制图片时若比例与格子不同则自动裁切
   const imgWidth = img.width;
   const imgHeight = img.height;
   const imgRatio = imgWidth / imgHeight;
   const gridRatio = gridWidth / gridHeight;
-  let drawWidth, drawHeight, drawX, drawY;
+  let drawWidth: number, drawHeight: number, drawX: number, drawY: number;
   if (imgRatio > gridRatio) {
     drawWidth = gridWidth;
     drawHeight = drawWidth / imgRatio;
-    drawX = 11 + Math.floor(920 / cols.value) * i;
-    drawY = 111 + Math.floor(920 / rows.value) * j + (gridHeight - drawHeight) / 2;
+    drawX = 11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0);
+    drawY = 111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0) + (gridHeight - drawHeight) / 2;
   } else {
     drawHeight = gridHeight;
     drawWidth = drawHeight * imgRatio;
-    drawX = 11 + Math.floor(920 / cols.value) * i + (gridWidth - drawWidth) / 2;
-    drawY = 111 + Math.floor(920 / rows.value) * j;
+    drawX = 11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0) + (gridWidth - drawWidth) / 2;
+    drawY = 111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0);
   }
   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   db.images.where("axis").equals(`${i},${j}`).modify({ src: img.src }).then((e) => {
@@ -501,6 +660,22 @@ async function loadLocalData() {
     }
     if (localStorage.getItem("cols")) {
       cols.value = Number(localStorage.getItem("cols")!);
+      drawRects();
+    }
+    if (localStorage.getItem("rowsWidth")) {
+      rowsWidth.value = JSON.parse(localStorage.getItem("rowsWidth")!);
+      drawRects();
+    }
+    if (localStorage.getItem("rowsGap")) {
+      rowsGap.value = JSON.parse(localStorage.getItem("rowsGap")!);
+      drawRects();
+    }
+    if (localStorage.getItem("colsWidth")) {
+      colsWidth.value = JSON.parse(localStorage.getItem("colsWidth")!);
+      drawRects();
+    }
+    if (localStorage.getItem("colsGap")) {
+      colsGap.value = JSON.parse(localStorage.getItem("colsGap")!);
       drawRects();
     }
     await db.images.toArray().then((e) => {
@@ -537,6 +712,10 @@ async function save() {
     name: localStorage.getItem("name")! || '',
     rows: localStorage.getItem("rows")! || 10,
     cols: localStorage.getItem("cols")! || 10,
+    rowsWidth: localStorage.getItem("rowsWidth")! || JSON.stringify(Array(10).fill(80)),
+    rowsGap: localStorage.getItem("rowsGap")! || JSON.stringify(Array(9).fill(10)),
+    colsWidth: localStorage.getItem("colsWidth")! || JSON.stringify(Array(10).fill(80)),
+    colsGap: localStorage.getItem("colsGap")! || JSON.stringify(Array(9).fill(10)),
     time: new Date().toLocaleString()
   };
   await db.images.toArray().then((e) => {
@@ -577,6 +756,10 @@ function restore() {
       if (json.name) localStorage.setItem("name", json.name); else localStorage.removeItem("name");
       if (json.rows) localStorage.setItem("rows", json.rows); else localStorage.removeItem("rows");
       if (json.cols) localStorage.setItem("cols", json.cols); else localStorage.removeItem("cols");
+      if (json.rowsWidth) localStorage.setItem("rowsWidth", json.rowsWidth); else localStorage.removeItem("rowsWidth");
+      if (json.rowsGap) localStorage.setItem("rowsGap", json.rowsGap); else localStorage.removeItem("rowsGap");
+      if (json.colsWidth) localStorage.setItem("colsWidth", json.colsWidth); else localStorage.removeItem("colsWidth");
+      if (json.colsGap) localStorage.setItem("colsGap", json.colsGap); else localStorage.removeItem("colsGap");
       await loadLocalData();
       restoreButton.innerText = "导入✅";
       setTimeout(() => {
@@ -623,8 +806,12 @@ function showResizeDialog() {
 
 // 提交调整格子数量的弹窗
 async function submitResize() {
+  // 如果格子宽高已精确调整，则弹窗提醒用户调整会被重置
+  if (!rowsWidth.value.every((e) => e === rowsWidth.value[0]) || !rowsGap.value.every((e) => e === rowsGap.value[0]) || !colsWidth.value.every((e) => e === colsWidth.value[0]) || !colsGap.value.every((e) => e === colsGap.value[0])) {
+    if (!confirm("调整后的格子宽高会被重置，是否继续？")) return;
+  }
   // 如果比例发生了变化且有已经填好的图片，则弹窗提醒用户图片会变形
-  if (resizeRows.value / resizeCols.value !== rows.value / cols.value && await db.images.count() > 0) {
+  else if (resizeRows.value / resizeCols.value !== rows.value / cols.value && await db.images.count() > 0) {
     if (!confirm("调整后的纵横比不同，会导致已填入的图片无法占满格子，是否继续？")) return;
   }
   // 计算原格子数，如果原标题含有"TOP + 总格子数，则也修改标题"
@@ -636,9 +823,173 @@ async function submitResize() {
   }
   rows.value = resizeRows.value;
   cols.value = resizeCols.value;
+  rowsWidth.value = Array(Number(resizeCols.value)).fill(Math.round(920 / resizeCols.value - 12));
+  rowsGap.value = Array(resizeCols.value - 1).fill(10);
+  colsWidth.value = Array(Number(resizeRows.value)).fill(Math.round(920 / resizeRows.value - 12));
+  colsGap.value = Array(resizeRows.value - 1).fill(10);
   localStorage.setItem("rows", rows.value.toString());
   localStorage.setItem("cols", cols.value.toString());
+  localStorage.setItem("rowsWidth", JSON.stringify(rowsWidth.value));
+  localStorage.setItem("rowsGap", JSON.stringify(rowsGap.value));
+  localStorage.setItem("colsWidth", JSON.stringify(colsWidth.value));
+  localStorage.setItem("colsGap", JSON.stringify(colsGap.value));
   resizeDialog.value!.close();
+  drawRects();
+  loadLocalData();
+}
+
+// 打开精确调整格子宽高的弹窗
+function showCustomDialog() {
+  customRowsWidth.value = rowsWidth.value;
+  customRowsGap.value = rowsGap.value;
+  customColsWidth.value = colsWidth.value;
+  customColsGap.value = colsGap.value;
+  customDialog.value!.showModal();
+}
+
+// 鼠标选中某一行或列
+function customFocusEvent(type: "row" | "col" | "rowGap" | "colGap" | "", index: number, event: MouseEvent) {
+  if (customFocusType.value === type && customFocusIndex.value === index) {
+    customFocusType.value = "";
+    customFocusIndex.value = -1;
+  } else {
+    customFocusType.value = type;
+    customFocusIndex.value = index;
+    // 如果是行列间距，启动拖拽事件
+    if (type === "rowGap" || type === "colGap") {
+      dragEvent.value = true;
+      if (type === "rowGap") {
+        dragStart.value = event.clientX;
+      } else {
+        dragStart.value = event.clientY;
+      }
+    }
+  }
+}
+
+// 鼠标划到某一行或列
+function customMouseOnEvent(type: "row" | "col" | "rowGap" | "colGap" | "", index: number, event: MouseEvent) {
+  // 如果dragEvent已启动，则屏蔽非当前选中类型的鼠标划过事件
+  if (dragEvent.value && (type !== customFocusType.value || index !== customFocusIndex.value)) return;
+  customMouseOnType.value = type;
+  customMouseOnIndex.value = index;
+  // 如果dragEvent已启动，则计算鼠标移动距离并调整行列宽高
+  if (dragEvent.value) {
+    if (type === "rowGap") {
+      const distance = event.clientX - dragStart.value;
+      if (customRowsWidth.value[index] + distance < 2 || customRowsWidth.value[index + 1] - distance < 2) return;
+      customRowsWidth.value[index] += distance * 2;
+      customRowsWidth.value[index + 1] -= distance * 2;
+      dragStart.value = event.clientX;
+      nextTick(() => {
+        // 再检测一次，防止拖拽过快导致的错误
+        if (customRowsWidth.value[index] < 2) {
+          const fixDistance = 2 - customRowsWidth.value[index];
+          customRowsWidth.value[index] += fixDistance;
+          customRowsWidth.value[index + 1] -= fixDistance;
+        };
+        if (customRowsWidth.value[index + 1] < 2) {
+          const fixDistance = 2 - customRowsWidth.value[index + 1];
+          customRowsWidth.value[index] -= fixDistance;
+          customRowsWidth.value[index + 1] += fixDistance;
+        };
+      });
+    } else if (type === "colGap") {
+      const distance = event.clientY - dragStart.value;
+      if (customColsWidth.value[index] + distance < 2 || customColsWidth.value[index + 1] - distance < 2) return;
+      customColsWidth.value[index] += distance * 2;
+      customColsWidth.value[index + 1] -= distance * 2;
+      dragStart.value = event.clientY;
+      nextTick(() => {
+        // 再检测一次，防止拖拽过快导致的错误
+        if (customColsWidth.value[index] < 2) {
+          const fixDistance = 2 - customColsWidth.value[index];
+          customColsWidth.value[index] += fixDistance;
+          customColsWidth.value[index + 1] -= fixDistance;
+        };
+        if (customColsWidth.value[index + 1] < 2) {
+          const fixDistance = 2 - customColsWidth.value[index + 1];
+          customColsWidth.value[index] -= fixDistance;
+          customColsWidth.value[index + 1] += fixDistance;
+        };
+      });
+    }
+  }
+}
+
+// 调整行列宽高的值
+function customChange(type: "row" | "col" | "rowGap" | "colGap", index: number, event: InputEvent) {
+  let value = Number((event.target as HTMLInputElement).value);
+  switch (type) {
+    case "row":
+      const maxWidth = rowsWidth.value[index] + rowsWidth.value[index + 1] - 2
+      if (value > maxWidth) value = maxWidth;
+      if (value < 2) value = 2;
+      customRowsWidth.value[index] = value;
+      customRowsWidth.value[index + 1] = maxWidth - value + 2;
+      break;
+    case "col":
+      const maxHeight = colsWidth.value[index] + colsWidth.value[index + 1] - 2
+      if (value > maxHeight) value = maxHeight;
+      if (value < 2) value = 2;
+      customColsWidth.value[index] = value;
+      customColsWidth.value[index + 1] = maxHeight - value + 2;
+      break;
+    case "rowGap":
+      const maxRowGap = rowsWidth.value[index + 1] + rowsGap.value[index] - 2
+      if (value > maxRowGap) value = maxRowGap;
+      if (value < 2) value = 2;
+      customRowsGap.value[index] = value;
+      customRowsWidth.value[index + 1] = maxRowGap - value + 2;
+      break;
+    case "colGap":
+      const maxColGap = colsWidth.value[index + 1] + colsGap.value[index] - 2
+      if (value > maxColGap) value = maxColGap;
+      if (value < 2) value = 2;
+      customColsGap.value[index] = value;
+      customColsWidth.value[index + 1] = maxColGap - value + 2;
+      break;
+  }
+}
+
+// 行列名英转中
+function toChinese(str: number | string) {
+  const chineseNum = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
+    "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"];
+  const chineseType = {
+    row: "列",
+    col: "行",
+    rowGap: "列间距",
+    colGap: "行间距"
+  };
+  switch (typeof str) {
+    case "number":
+      return chineseNum[str - 1];
+    case "string":
+      return chineseType[str];
+    default:
+      return "";
+  }
+}
+
+// 提交精确调整格子宽高的弹窗
+function submitCustom() {
+  rowsWidth.value = customRowsWidth.value;
+  rowsGap.value = customRowsGap.value;
+  colsWidth.value = customColsWidth.value;
+  colsGap.value = customColsGap.value;
+  localStorage.setItem("rowsWidth", JSON.stringify(rowsWidth.value));
+  localStorage.setItem("rowsGap", JSON.stringify(rowsGap.value));
+  localStorage.setItem("colsWidth", JSON.stringify(colsWidth.value));
+  localStorage.setItem("colsGap", JSON.stringify(colsGap.value));
+  customDialog.value!.close();
+  // 清空各种临时参数
+  customMouseOnType.value = "";
+  customMouseOnIndex.value = -1;
+  customFocusType.value = "";
+  customFocusIndex.value = -1;
+  dragEvent.value = false;
+  dragStart.value = 0;
   drawRects();
   loadLocalData();
 }
