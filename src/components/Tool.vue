@@ -1322,8 +1322,18 @@ async function share() {
 
 // 复制分享链接
 function copyShareSite() {
-  navigator.clipboard.writeText(shareSite.value);
-  alert('已复制到剪贴板，发送给你的朋友吧！');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareSite.value);
+    alert('已复制到剪贴板!');
+  } else {
+    const input = document.createElement("input");
+    input.value = shareSite.value;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    document.body.removeChild(input);
+    alert('已复制到剪贴板!');
+  }
 }
 
 // 打开被分享弹窗
@@ -1351,6 +1361,9 @@ async function showsharedDialog() {
     console.log(sharedPreview.value);
     // 打开弹窗
     sharedDialog.value!.showModal();
+  } else {
+    // 抹去无效的key
+    location.href = location.origin
   }
 }
 
