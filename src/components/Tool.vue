@@ -1,19 +1,26 @@
 <template>
-  <div class="inline-flex gap-9 justify-center items-center">
-    <button class="btn text-white btn-primary btn-sm" id="save" @click="save()">导出</button>
-    <button class="btn text-white btn-primary btn-sm" id="restore" @click="restore">导入</button>
-    <button class="btn text-white btn-error btn-sm" id="clear" @click="clear">清空</button>
-    <button class="btn text-white btn-primary btn-sm" id="download" @click="download">下载</button>
-    <button class="btn text-white btn-secondary btn-sm" @click="showResizeDialog()">格子太多了！</button>
-    <button class="btn text-white btn-accent btn-sm" @click="showCustomDialog()">精确调整</button>
-    <button class="btn text-white btn-success btn-sm" @click="showShareDialog()">分享</button>
+  <div class="inline-flex gap-8 justify-center items-center flex-wrap">
+    <button class="btn text-white btn-primary btn-sm" :class="isMobile && 'btn-lg text-2xl'" id="save"
+      @click="save()">导出</button>
+    <button class="btn text-white btn-primary btn-sm" :class="isMobile && 'btn-lg text-2xl'" id="restore"
+      @click="restore">导入</button>
+    <button class="btn text-white btn-error btn-sm" :class="isMobile && 'btn-lg text-2xl'" id="clear"
+      @click="clear">清空</button>
+    <button class="btn text-white btn-primary btn-sm" :class="isMobile && 'btn-lg text-2xl'" id="download"
+      @click="download">下载</button>
+    <button class="btn text-white btn-secondary btn-sm" :class="isMobile && 'btn-lg text-2xl'"
+      @click="showResizeDialog()">格子太多了！</button>
+    <button class="btn text-white btn-accent btn-sm" :class="isMobile && 'btn-lg text-2xl'"
+      @click="showCustomDialog()">精确调整</button>
+    <button class="btn text-white btn-success btn-sm" :class="isMobile && 'btn-lg text-2xl'"
+      @click="showShareDialog()">分享</button>
 
-    <label class="label cursor-pointer">
+    <label class="label cursor-pointer" :class="isMobile && 'text-2xl'">
       <input class="toggle" type="checkbox" v-model="titleLimit" :checked="titleLimit" />
       <span class="ml-1">解除标题限制</span>
     </label>
 
-    <label class="label cursor-pointer" v-if="isMobile">
+    <label class="label cursor-pointer" :class="isMobile && 'text-2xl'" v-if="isMobile">
       <input class="toggle" type="checkbox" v-model="textMode" :checked="textMode" />
       <span class="ml-1">填字模式</span>
     </label>
@@ -30,8 +37,10 @@
         :fixedNumber="[rowsWidth[cropCoord!.x], colsWidth[cropCoord!.y]]" outputType="png" infoTrue autoCrop fixed
         :enlarge="Math.max(Math.ceil(cropCoord.width / 400), Math.ceil(cropCoord.height / 400))" />
       <div class="flex gap-4 justify-end mt-4">
-        <button class="btn text-white btn-sm btn-warning" @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
-        <button class="btn text-white btn-sm btn-primary" @click="afterCrop">确定</button>
+        <button class="btn text-white btn-sm btn-warning" :class="isMobile && 'btn-lg text-2xl'"
+          @click="clearCrop(cropCoord!.x, cropCoord!.y)">清空</button>
+        <button class="btn text-white btn-sm btn-primary" :class="isMobile && 'btn-lg text-2xl'"
+          @click="afterCrop">确定</button>
       </div>
     </div>
   </dialog>
@@ -57,15 +66,16 @@
         </div>
       </div>
       <div class="flex gap-4 justify-end mt-4">
-        <button v-if="!DDMode" class="btn text-white btn-sm btn-warning"
+        <button v-if="!DDMode" class="btn text-white btn-sm btn-warning" :class="isMobile && 'btn-lg text-2xl'"
           @click="resizeCols = 20; resizeRows = 20; DDMode = true;">
           我的意思是，格子不够用了
         </button>
-        <button v-if="DDMode" class="btn text-white btn-sm btn-success"
+        <button v-if="DDMode" class="btn text-white btn-sm btn-success" :class="isMobile && 'btn-lg text-2xl'"
           @click="DDMode = false; resizeRows = (resizeRows > 10 ? 10 : resizeRows); resizeCols = (resizeCols > 10 ? 10 : resizeCols)">
           算了算了
         </button>
-        <button class="btn text-white btn-sm btn-primary" @click="submitResize">确定</button>
+        <button class="btn text-white btn-sm btn-primary" :class="isMobile && 'btn-lg text-2xl'"
+          @click="submitResize">确定</button>
       </div>
     </div>
   </dialog>
@@ -182,7 +192,8 @@
       </div>
       <!-- 按钮 -->
       <div class="flex gap-4 justify-end mt-4">
-        <button class="btn text-white btn-sm btn-primary" @click="submitCustom">确定</button>
+        <button class="btn text-white btn-sm btn-primary" :class="isMobile && 'btn-lg text-2xl'"
+          @click="submitCustom">确定</button>
       </div>
     </div>
   </dialog>
@@ -221,8 +232,10 @@
             :style="{ width: isMobile ? '400px' : '340px' }" readonly />
         </div>
         <div class="indicator">
-          <button v-if="!isMobile" class="btn btn-sm btn-primary join-item" @click="copyShareSite">复制到剪贴板</button>
-          <button v-if="isMobile" class="btn btn-sm btn-primary join-item" @click="shareSiteMobile">分享</button>
+          <button v-if="!isMobile" class="btn btn-sm btn-primary join-item" :class="isMobile && 'btn-lg text-2xl'"
+            @click="copyShareSite">复制到剪贴板</button>
+          <button v-if="isMobile" class="btn btn-sm btn-primary join-item" :class="isMobile && 'btn-lg text-2xl'"
+            @click="shareSiteMobile">分享</button>
         </div>
       </div>
     </div>
@@ -256,8 +269,10 @@
         </div>
       </div>
       <div class="flex gap-4 justify-end mt-4">
-        <button class="btn text-white btn-secondary btn-sm" id="shareSave" @click="save('shareSave')">我要先导出已填写的图表</button>
-        <button class="btn text-white btn-sm btn-primary" @click="acceptShared">确定覆盖</button>
+        <button class="btn text-white btn-secondary btn-sm" :class="isMobile && 'btn-lg text-2xl'" id="shareSave"
+          @click="save('shareSave')">我要先导出已填写的图表</button>
+        <button class="btn text-white btn-sm btn-primary" :class="isMobile && 'btn-lg text-2xl'"
+          @click="acceptShared">确定覆盖</button>
       </div>
     </div>
   </dialog>
