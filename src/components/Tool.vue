@@ -470,8 +470,21 @@ function mountEvent() {
       const [_i, _j] = getGridIndex(e);
       if (_i === -1 || _j === -1) return;
 
-      if (_i !== i || _j !== j) { // 如果抬起的位置与按下的位置不同，则触发替换事件
-        if (await db.images.where("axis").equals(`${i},${j}`).count() > 0 && await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) {
+      if (_i !== i || _j !== j) { // 如果抬起的位置与按下的位置不同，则触发替换类事件
+        if (await db.images.where("axis").equals(`${i},${j}`).count() === 0) return; // 如果原位置没有图片，则替换类事件停止
+        if (e.ctrlKey) { // 如果按住ctrl，则触发复制事件
+          const data = await db.images.where("axis").equals(`${i},${j}`).first()!;
+          await db.images.put({ ...data, axis: `${_i},${_j}` });
+          if (data!.type === 'text' && data!.text) {
+            drawOnGrid(data!.text, _i, _j);
+          } else {
+            const img = new Image();
+            img.src = data?.src || '';
+            img.onload = () => {
+              drawOnGrid(img, _i, _j);
+            };
+          }
+        } else if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) { // 如果目标位置有图片，则触发交换事件
           db.images.where("axis").equals(`${_i},${_j}`).modify({ axis: `temp` });
           db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
           db.images.where("axis").equals(`temp`).modify({ axis: `${i},${j}` });
@@ -501,9 +514,8 @@ function mountEvent() {
               drawOnGrid(img2, i, j);
             };
           }
-        } else if (await db.images.where("axis").equals(`${i},${j}`).count() > 0) {
+        } else { // 如果目标位置没有图片，则触发移动事件
           db.images.where("axis").equals(`${i},${j}`).modify({ axis: `${_i},${_j}` });
-
           const data = await db.images.where("axis").equals(`${_i},${_j}`).first()!;
           if (data!.type === 'text' && data!.text) {
             clearCrop(i, j);
@@ -517,6 +529,7 @@ function mountEvent() {
             };
           }
         }
+
       } else { // 如果抬起的位置与按下的位置相同，则触发点击事件
         if (await db.images.where("axis").equals(`${_i},${_j}`).count() > 0) { // 如果当前格子有值，则触发编辑事件
           console.log('edit');
@@ -735,13 +748,13 @@ async function afterCrop() {
 // 清空指定格子
 function clearCrop(i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
+  ctx.fillStyle = "#fff";
   ctx.strokeRect(
     10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
     110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
     rowsWidth.value[i] + 2,
     colsWidth.value[j] + 2
   );
-  ctx.fillStyle = "#fff";
   ctx.fillRect(
     11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
     111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
@@ -815,11 +828,18 @@ function drawImageOnGrid(img: HTMLImageElement, i: number, j: number) {
   const ctx = canvas.value!.getContext("2d")!;
   const gridWidth = rowsWidth.value[i];
   const gridHeight = colsWidth.value[j];
-  ctx.clearRect(
+  ctx.strokeRect(
+    10 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
+    110 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
+    rowsWidth.value[i] + 2,
+    colsWidth.value[j] + 2
+  );
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(
     11 + rowsWidth.value.slice(0, i).reduce((a, b) => a + b + 2, 0) + rowsGap.value.slice(0, i).reduce((a, b) => a + b, 0),
     111 + colsWidth.value.slice(0, j).reduce((a, b) => a + b + 2, 0) + colsGap.value.slice(0, j).reduce((a, b) => a + b, 0),
-    gridWidth,
-    gridHeight
+    rowsWidth.value[i],
+    colsWidth.value[j]
   );
   // 绘制图片时若比例与格子不同则自动裁切
   const imgWidth = img.width;
