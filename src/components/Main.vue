@@ -22,7 +22,8 @@ function letsShow() {
       </div>
       <div>追加填写文字功能。PC端右键空白格子/手机端启动填字模式开关即可向表内填写文字。</div>
       <div class="line-through">这鬼东西向着Excel的方向一去不复返了</div>
-      <div>追加分享表格功能，可以把自己设计的表发给朋友做了！</div>
+      <div>追加分享表格功能，可以把自己设计的表发给朋友做了。</div>
+      <div>除了示例图表之外有什么好的设计也非常推荐发出来分享！</div>
       <div>为了适应新功能进行了大规模重构，无法保证没有BUG。</div>
       <div>若发现问题请务必
         <a href="https://github.com/SomiaWhiteRing/love100/issues" target="_blank">
