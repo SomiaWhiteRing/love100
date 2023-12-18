@@ -16,9 +16,9 @@ function letsShow() {
     <summary class="collapse-title text-xl font-medium cursor-pointer" :class="{ 'text-4xl': isMobile }">2023/12/17 更新说明
     </summary>
     <div class="collapse-content" :class="{ 'text-2xl': isMobile }">
-      <div>本次更新追加“精细调整”功能（拖拽功能仅限PC使用）。这个功能有什么用？
+      <div>本次更新追加“精细调整”功能（拖拽功能仅限PC使用）。
         <button class="btn text-white btn-primary btn-sm" :class="isMobile && 'btn-lg text-xl'"
-          @click="letsShow">点此体验！</button>
+          @click="letsShow">点此体验示例图表！</button>
       </div>
       <div>追加填写文字功能。PC端右键空白格子/手机端启动填字模式开关即可向表内填写文字。</div>
       <div class="line-through">这鬼东西向着Excel的方向一去不复返了</div>
