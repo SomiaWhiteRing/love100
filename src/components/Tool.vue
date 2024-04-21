@@ -1,5 +1,5 @@
 <template>
-  <div class="inline-flex gap-8 justify-center items-center flex-wrap">
+  <div class="inline-flex gap-4 justify-center items-center flex-wrap">
     <button
       class="btn text-white btn-primary btn-sm"
       :class="isMobile && 'btn-lg text-2xl'"
