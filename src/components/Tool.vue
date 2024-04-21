@@ -2123,10 +2123,10 @@ async function acceptShared() {
   localStorage.setItem("name", sharedPreviewConfig.value.name);
   localStorage.setItem(
     "titleLimit",
-    sharedPreviewConfig.value.titleLimit.toString()
+    sharedPreviewConfig.value.titleLimit!.toString()
   );
-  localStorage.setItem("rows", sharedPreviewConfig.value.rows.toString());
-  localStorage.setItem("cols", sharedPreviewConfig.value.cols.toString());
+  localStorage.setItem("rows", sharedPreviewConfig.value.rows!.toString());
+  localStorage.setItem("cols", sharedPreviewConfig.value.cols!.toString());
   localStorage.setItem(
     "rowsWidth",
     JSON.stringify(sharedPreviewConfig.value.rowsWidth)
