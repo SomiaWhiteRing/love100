@@ -702,7 +702,7 @@ const cropCoord = ref<{ x: number; y: number; width: number; height: number }>({
 });
 
 // 标题和填表人
-const title = ref<string>("2023推TOP100");
+const title = ref<string>("2024推TOP100");
 const titleWidth = ref<number>(0);
 const name = ref<string>("填表人：__________");
 const nameWidth = ref<number>(0);
@@ -714,7 +714,7 @@ watch(titleLimit, (newVal) => {
   // 如果禁用了解除标题限制时，标题或填表人为空，则自动补充缺省值
   if (!newVal) {
     if (!title.value) {
-      title.value = "2023推TOP100";
+      title.value = "2024推TOP100";
       localStorage.setItem("title", title.value);
       drawTitle();
     }
@@ -1081,7 +1081,7 @@ function clickTitle(x: number, y: number) {
       drawTitle();
     } else {
       title.value = (
-        prompt(`请输入新标题`, title.value) || "2023推TOP100"
+        prompt(`请输入新标题`, title.value) || "2024推TOP100"
       ).trim();
       // 计算标题可用字数
       while (
@@ -1098,7 +1098,7 @@ function clickTitle(x: number, y: number) {
           }，请尝试重新输入或缩短填表人名称`
         );
         title.value = (
-          prompt(`请输入新标题`, title.value) || "2023推TOP100"
+          prompt(`请输入新标题`, title.value) || "2024推TOP100"
         ).trim();
       }
       localStorage.setItem("title", title.value);
@@ -1624,7 +1624,7 @@ async function clear() {
   localStorage.setItem("rowsGap", JSON.stringify(Array(9).fill(10)));
   localStorage.setItem("colsWidth", JSON.stringify(Array(10).fill(80)));
   localStorage.setItem("colsGap", JSON.stringify(Array(9).fill(10)));
-  localStorage.setItem("title", "2023推TOP100");
+  localStorage.setItem("title", "2024推TOP100");
   loadLocalData();
 
   const clearButton = document.getElementById("clear")!;
@@ -2188,3 +2188,4 @@ function unzip(encodeStr: string) {
   return JSON.parse(decodeURIComponent(json));
 }
 </script>
+
